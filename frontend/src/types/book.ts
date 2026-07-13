@@ -1,18 +1,19 @@
 export type Workbook = {
   name: string;
-  sheets: Record<number, Sheet>;
-  activeSheetId: number;
+  sheets: Sheet[];
+  activeSheetIndx: number;
 };
 
 export type Sheet = {
   id: number;
   name: string;
-  data: Record<`${string}-${string}`, Record<string, Grid>>;
+  data: Record<`${string}-${string}`, Grid>;
+  hasChanged: boolean;
 };
 
 export type Grid = {
   style: Record<string, string>;
-  content: string | number | null | undefined;
+  content: string | null;
 };
 
 export enum Alphabets {

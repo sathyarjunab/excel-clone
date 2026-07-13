@@ -3,14 +3,16 @@ import "./../scss/sheet.scss";
 import { SheetProps } from "./sheet";
 
 function child({
-  value,
-  customStyle,
   handleDoubleClick,
-  clickedCells,
+  handleDataEntry,
+  value,
   coOrdinates,
+  clickedCells,
+  customStyle,
 }: {
-  value: string;
   handleDoubleClick: () => void;
+  handleDataEntry: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  value: string | null;
   coOrdinates: string;
   clickedCells: SheetProps | undefined;
   customStyle?: CSSProperties;
@@ -22,7 +24,8 @@ function child({
           className="grid-cell"
           style={customStyle}
           autoFocus={true}
-          defaultValue={value}
+          defaultValue={value ?? ""}
+          onChange={handleDataEntry}
         />
       ) : (
         <div

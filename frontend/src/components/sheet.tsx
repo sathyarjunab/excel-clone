@@ -1,11 +1,13 @@
-import { CSSProperties, useState, useRef, UIEvent } from "react";
+import { CSSProperties, UIEvent, useContext, useRef, useState } from "react";
 import "../scss/sheet.scss";
+import { Sheet as sheetInterface } from "../types/book";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
+import { UserContext } from "../context";
 
 export type SheetProps = {
-  prevClickedCell: string | undefined;
-  currentClickedCell: string | undefined;
+  prevClickedCell: `${string}-${string}` | undefined;
+  currentClickedCell: `${string}-${string}` | undefined;
 };
 
 const CELL_WIDTH = 64;
@@ -13,9 +15,10 @@ const CELL_HEIGHT = 20;
 const Y_AXIS_WIDTH = 40;
 const TOTAL_ROWS = 10000;
 const TOTAL_COLS = 1000;
-const BUFFER = 5;
 
 export default function Sheet() {
+  const { setBook, book, activeSheetIndx } = useContext(UserContext);
+
   const [clickedCells, setClickedCells] = useState<SheetProps>();
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -39,7 +42,7 @@ export default function Sheet() {
     setClickedCells((prev) => {
       return {
         prevClickedCell: prev?.currentClickedCell,
-        currentClickedCell: `${x}-${y}`,
+        currentClickedCell: `${x.toString()}-${y.toString()}`,
       };
     });
   };
@@ -48,6 +51,33 @@ export default function Sheet() {
     setScrollPosition({
       top: e.currentTarget.scrollTop,
       left: e.currentTarget.scrollLeft,
+    });
+  };
+
+  const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const content = e.target.value;
+    setBook((prev) => {
+      return {
+        ...prev,
+        sheets: prev.sheets.map((sheet) => {
+          if (
+            sheet.id === prev.activeSheetIndx &&
+            clickedCells?.currentClickedCell
+          ) {
+            return {
+              ...sheet,
+              data: {
+                ...sheet.data,
+                [clickedCells.currentClickedCell]: {
+                  ...sheet.data[clickedCells?.currentClickedCell],
+                  content: content,
+                },
+              },
+            };
+          }
+          return sheet;
+        }),
+      };
     });
   };
 
@@ -73,7 +103,7 @@ export default function Sheet() {
 
   for (let x = startRow; x < endRow; x++) {
     for (let y = startCol; y < endCol; y++) {
-      let val: string = "";
+      let val: string | null = null;
       if (x === 0 && y > 0) val = numberToAlphabet(y, "");
       if (y === 0 && x > 0) val = x.toString();
 
@@ -94,12 +124,16 @@ export default function Sheet() {
         ...(isCorner ? { zIndex: 3 } : {}),
       };
 
+      if (!val) {
+        val = book.sheets[activeSheetIndx]?.data[`${x}-${y}`]?.content || "";
+      }
       visibleCells.push(
         <Grid
+          handleDataEntry={handleDataEntry}
+          handleDoubleClick={() => handleDoubleClick(x, y)}
           key={`${x}-${y}`}
           value={val}
           customStyle={customStyle}
-          handleDoubleClick={() => handleDoubleClick(x, y)}
           coOrdinates={`${x}-${y}`}
           clickedCells={clickedCells}
         />,

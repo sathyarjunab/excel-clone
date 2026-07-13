@@ -1,32 +1,4 @@
-export const alphabets = [
-  "",
-  "A",
-  "B",
-  "C",
-  "D",
-  "E",
-  "F",
-  "G",
-  "H",
-  "I",
-  "J",
-  "K",
-  "L",
-  "M",
-  "N",
-  "O",
-  "P",
-  "Q",
-  "R",
-  "S",
-  "T",
-  "U",
-  "V",
-  "W",
-  "X",
-  "Y",
-  "Z",
-];
+import { alphabets } from "../helper/book";
 
 export function numberToAlphabet(num: number, result: string): string {
   if (!num || num <= 0) return "";
