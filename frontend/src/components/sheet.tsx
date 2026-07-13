@@ -12,15 +12,26 @@ export type SheetProps = {
 const CELL_WIDTH = 64;
 const CELL_HEIGHT = 20;
 const Y_AXIS_WIDTH = 40;
-const TOTAL_ROWS = 10000;
-const TOTAL_COLS = 1000;
+
+const getYAxisWidth = (rowCount: number) => {
+  const digits = Math.max(1, rowCount.toString().length);
+  return Math.max(Y_AXIS_WIDTH, 16 + digits * 8);
+};
 
 export default function Sheet() {
   const { setBook, book, activeSheetIndx } = useContext(UserContext);
 
+  const [rowsAndCol, setRowsAndCol] = useState<{
+    rows: number;
+    cols: number;
+  }>({
+    rows: 10000,
+    cols: 10000,
+  });
   const [clickedCells, setClickedCells] = useState<SheetProps>();
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
+  const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -28,13 +39,15 @@ export default function Sheet() {
     color: "#616174",
     zIndex: 2,
   });
-  const [yAxisStyle] = useState<CSSProperties>({
+  const yAxisStyle: CSSProperties = {
     backgroundColor: "#F3F3F3",
-    width: `${Y_AXIS_WIDTH}px`,
+    width: `${yAxisWidth}px`,
     justifyContent: "end",
     color: "#616174",
     zIndex: 2,
-  });
+    paddingRight: 6,
+    textAlign: "right",
+  };
 
   const handleDoubleClick = (x: number, y: number) => {
     if (x === 0 || y === 0) return;
@@ -88,15 +101,33 @@ export default function Sheet() {
   // Calculate visible range
   const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
   const endRow = Math.min(
-    TOTAL_ROWS,
+    rowsAndCol.rows,
     startRow + Math.ceil(windowHeight / CELL_HEIGHT),
   );
 
+  if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
+    setRowsAndCol((prev) => {
+      return {
+        ...prev,
+        rows: prev.rows + 1000,
+      };
+    });
+  }
+
   const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
   const endCol = Math.min(
-    TOTAL_COLS,
+    rowsAndCol.cols,
     startCol + Math.ceil(windowWidth / CELL_WIDTH),
   );
+
+  if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
+    setRowsAndCol((prev) => {
+      return {
+        ...prev,
+        cols: prev.cols + 1000,
+      };
+    });
+  }
 
   const visibleCells = [];
 
@@ -106,7 +137,7 @@ export default function Sheet() {
 
       let val: string | null = null;
       const top = x * CELL_HEIGHT;
-      const left = Y_AXIS_WIDTH + (y - 1) * CELL_WIDTH;
+      const left = yAxisWidth + (y - 1) * CELL_WIDTH;
 
       const customStyle: CSSProperties = {
         top: `${top}px`,
@@ -136,12 +167,15 @@ export default function Sheet() {
     visibleXAxisCells.push(
       <div
         key={`x-${y}`}
-        className="grid-cell sticky-axis-cell"
+        className="grid-cell axis-cell"
         style={{
           ...xAxisStyle,
+          // Same coordinate model as the data cells so the letter always
+          // sits directly above its column, regardless of scroll offset.
+          left: `${yAxisWidth + (y - 1) * CELL_WIDTH}px`,
+          top: 0,
           width: `${CELL_WIDTH}px`,
           height: `${CELL_HEIGHT}px`,
-          flexShrink: 0,
         }}
       >
         {numberToAlphabet(y, "")}
@@ -155,12 +189,13 @@ export default function Sheet() {
     visibleYAxisCells.push(
       <div
         key={`y-${x}`}
-        className="grid-cell sticky-axis-cell"
+        className="grid-cell axis-cell"
         style={{
           ...yAxisStyle,
-          width: `${Y_AXIS_WIDTH}px`,
+          left: 0,
+          top: `${x * CELL_HEIGHT}px`,
+          width: `${yAxisWidth}px`,
           height: `${CELL_HEIGHT}px`,
-          flexShrink: 0,
         }}
       >
         {x.toString()}
@@ -173,39 +208,50 @@ export default function Sheet() {
       <div
         className="sheet-body"
         style={{
-          width: `${Y_AXIS_WIDTH + (TOTAL_COLS - 1) * CELL_WIDTH}px`,
-          height: `${TOTAL_ROWS * CELL_HEIGHT}px`,
+          width: `${yAxisWidth + (rowsAndCol.cols - 1) * CELL_WIDTH}px`,
+          height: `${rowsAndCol.rows * CELL_HEIGHT}px`,
         }}
       >
+        {/* Column headers (A, B, C ...): pinned to the top on vertical
+            scroll, but free to move horizontally so each letter tracks its
+            column. */}
         <div
           className="sheet-axis sheet-x-axis"
           style={{
-            width: `${Math.max(0, endCol - startCol) * CELL_WIDTH}px`,
+            width: `${yAxisWidth + (rowsAndCol.cols - 1) * CELL_WIDTH}px`,
             height: `${CELL_HEIGHT}px`,
+            transform: `translateY(${scrollPosition.top}px)`,
           }}
         >
-          <div
-            className="grid-cell sticky-axis-cell"
-            style={{
-              ...xAxisStyle,
-              ...yAxisStyle,
-              width: `${Y_AXIS_WIDTH}px`,
-              height: `${CELL_HEIGHT}px`,
-              flexShrink: 0,
-              zIndex: 3,
-            }}
-          />
           {visibleXAxisCells}
         </div>
+        {/* Row headers (1, 2, 3 ...): pinned to the left on horizontal
+            scroll, but free to move vertically so each number tracks its
+            row. */}
         <div
           className="sheet-axis sheet-y-axis"
           style={{
-            width: `${Y_AXIS_WIDTH}px`,
-            height: `${Math.max(0, endRow - startRow) * CELL_HEIGHT}px`,
+            width: `${yAxisWidth}px`,
+            height: `${rowsAndCol.rows * CELL_HEIGHT}px`,
+            transform: `translateX(${scrollPosition.left}px)`,
           }}
         >
           {visibleYAxisCells}
         </div>
+        {/* Top-left corner: pinned in both directions. */}
+        <div
+          className="sheet-corner grid-cell"
+          style={{
+            ...xAxisStyle,
+            ...yAxisStyle,
+            left: 0,
+            top: 0,
+            width: `${yAxisWidth}px`,
+            height: `${CELL_HEIGHT}px`,
+            zIndex: 4,
+            transform: `translate(${scrollPosition.left}px, ${scrollPosition.top}px)`,
+          }}
+        />
         {visibleCells}
       </div>
     </div>

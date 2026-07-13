@@ -1,6 +1,6 @@
 .sheet-viewport {
   width: 100vw;
-  height: 100vh;
+  height: 73vh;
   overflow: auto;
   position: relative;
 }
@@ -11,24 +11,31 @@
 }
 
 .sheet-axis {
-  position: sticky;
+  position: absolute;
   top: 0;
   left: 0;
-  display: flex;
   z-index: 2;
   background-color: #f3f3f3;
   pointer-events: none;
+  // The transform (set inline from the scroll position) pins the axis to the
+  // viewport; will-change keeps that transform on its own compositor layer.
+  will-change: transform;
 }
 
 .sheet-x-axis {
-  flex-direction: row;
-  align-items: center;
+  z-index: 2;
 }
 
 .sheet-y-axis {
-  flex-direction: column;
-  top: 20px;
-  align-items: center;
+  z-index: 3;
+}
+
+.sheet-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  will-change: transform;
 }
 
 .grid-cell {
@@ -57,10 +64,10 @@
   display: none;
 }
 
-.sticky-axis-cell {
-  position: relative;
-  left: auto;
-  top: auto;
+.axis-cell {
+  // Positioned by the same absolute (left/top) coordinate model as the data
+  // cells, so headers always align with their column/row.
+  position: absolute;
 }
 
 .x-axis {
