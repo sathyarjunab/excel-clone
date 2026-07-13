@@ -1,0 +1,14 @@
+.config-tab {
+  border: 1px solid black;
+  width: 100%;
+  height: 15dvh;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet {
+  overflow: auto;
+}

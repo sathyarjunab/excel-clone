@@ -1,0 +1,44 @@
+.sheet-viewport {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  position: relative;
+}
+
+.sheet-body {
+  position: relative;
+  background-color: #ffffff;
+}
+
+.grid-cell {
+  position: absolute;
+  width: 64px;
+  height: 20px;
+  border: 1px solid #d9d9d9;
+  box-sizing: border-box;
+  padding: 0 4px;
+  font-size: 11pt;
+  font-family: Calibri, sans-serif;
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+
+  overflow: hidden;
+
+  /* Firefox */
+  scrollbar-width: none;
+
+  /* IE and old Edge */
+  -ms-overflow-style: none;
+}
+
+.grid-cell::-webkit-scrollbar {
+  display: none;
+}
+
+.x-axis {
+  display: flex;
+  flex-direction: row;
+  overflow: auto;
+  height: 5dvh;
+}
