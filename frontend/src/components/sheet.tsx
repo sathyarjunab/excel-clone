@@ -1,6 +1,5 @@
 import { CSSProperties, UIEvent, useContext, useRef, useState } from "react";
 import "../scss/sheet.scss";
-import { Sheet as sheetInterface } from "../types/book";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
 import { UserContext } from "../context";
@@ -103,25 +102,15 @@ export default function Sheet() {
 
   for (let x = startRow; x < endRow; x++) {
     for (let y = startCol; y < endCol; y++) {
+      if (x === 0 || y === 0) continue;
+
       let val: string | null = null;
-      if (x === 0 && y > 0) val = numberToAlphabet(y, "");
-      if (y === 0 && x > 0) val = x.toString();
-
-      const isXAxis = x === 0;
-      const isYAxis = y === 0;
-      const isCorner = isXAxis && isYAxis;
-
-      const top = isXAxis ? scrollPosition.top : x * CELL_HEIGHT;
-      const left = isYAxis
-        ? scrollPosition.left
-        : Y_AXIS_WIDTH + (y - 1) * CELL_WIDTH;
+      const top = x * CELL_HEIGHT;
+      const left = Y_AXIS_WIDTH + (y - 1) * CELL_WIDTH;
 
       const customStyle: CSSProperties = {
         top: `${top}px`,
         left: `${left}px`,
-        ...(isXAxis ? xAxisStyle : {}),
-        ...(isYAxis ? yAxisStyle : {}),
-        ...(isCorner ? { zIndex: 3 } : {}),
       };
 
       if (!val) {
@@ -141,6 +130,44 @@ export default function Sheet() {
     }
   }
 
+  const visibleXAxisCells = [];
+  for (let y = startCol; y < endCol; y++) {
+    if (y === 0) continue;
+    visibleXAxisCells.push(
+      <div
+        key={`x-${y}`}
+        className="grid-cell sticky-axis-cell"
+        style={{
+          ...xAxisStyle,
+          width: `${CELL_WIDTH}px`,
+          height: `${CELL_HEIGHT}px`,
+          flexShrink: 0,
+        }}
+      >
+        {numberToAlphabet(y, "")}
+      </div>,
+    );
+  }
+
+  const visibleYAxisCells = [];
+  for (let x = startRow; x < endRow; x++) {
+    if (x === 0) continue;
+    visibleYAxisCells.push(
+      <div
+        key={`y-${x}`}
+        className="grid-cell sticky-axis-cell"
+        style={{
+          ...yAxisStyle,
+          width: `${Y_AXIS_WIDTH}px`,
+          height: `${CELL_HEIGHT}px`,
+          flexShrink: 0,
+        }}
+      >
+        {x.toString()}
+      </div>,
+    );
+  }
+
   return (
     <div className="sheet-viewport" ref={viewportRef} onScroll={handleScroll}>
       <div
@@ -150,6 +177,35 @@ export default function Sheet() {
           height: `${TOTAL_ROWS * CELL_HEIGHT}px`,
         }}
       >
+        <div
+          className="sheet-axis sheet-x-axis"
+          style={{
+            width: `${Math.max(0, endCol - startCol) * CELL_WIDTH}px`,
+            height: `${CELL_HEIGHT}px`,
+          }}
+        >
+          <div
+            className="grid-cell sticky-axis-cell"
+            style={{
+              ...xAxisStyle,
+              ...yAxisStyle,
+              width: `${Y_AXIS_WIDTH}px`,
+              height: `${CELL_HEIGHT}px`,
+              flexShrink: 0,
+              zIndex: 3,
+            }}
+          />
+          {visibleXAxisCells}
+        </div>
+        <div
+          className="sheet-axis sheet-y-axis"
+          style={{
+            width: `${Y_AXIS_WIDTH}px`,
+            height: `${Math.max(0, endRow - startRow) * CELL_HEIGHT}px`,
+          }}
+        >
+          {visibleYAxisCells}
+        </div>
         {visibleCells}
       </div>
     </div>

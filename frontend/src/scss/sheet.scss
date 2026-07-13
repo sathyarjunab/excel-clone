@@ -10,6 +10,27 @@
   background-color: #ffffff;
 }
 
+.sheet-axis {
+  position: sticky;
+  top: 0;
+  left: 0;
+  display: flex;
+  z-index: 2;
+  background-color: #f3f3f3;
+  pointer-events: none;
+}
+
+.sheet-x-axis {
+  flex-direction: row;
+  align-items: center;
+}
+
+.sheet-y-axis {
+  flex-direction: column;
+  top: 20px;
+  align-items: center;
+}
+
 .grid-cell {
   position: absolute;
   width: 64px;
@@ -34,6 +55,12 @@
 
 .grid-cell::-webkit-scrollbar {
   display: none;
+}
+
+.sticky-axis-cell {
+  position: relative;
+  left: auto;
+  top: auto;
 }
 
 .x-axis {
