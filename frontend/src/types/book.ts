@@ -7,7 +7,8 @@ export type Workbook = {
 export type Sheet = {
   id: number;
   name: string;
-  data: Record<`${string}-${string}`, Grid>;
+  cells: Record<`${string}-${string}`, Grid>;
+  dirtyCells: Record<`${string}-${string}`, Grid>;
   hasChanged: boolean;
 };
 

@@ -19,7 +19,8 @@ const getYAxisWidth = (rowCount: number) => {
 };
 
 export default function Sheet() {
-  const { setBook, book, activeSheetIndx } = useContext(UserContext);
+  const { setBook, book, activeSheetIndx, saveSheets } =
+    useContext(UserContext);
 
   const [rowsAndCol, setRowsAndCol] = useState<{
     rows: number;
@@ -32,6 +33,7 @@ export default function Sheet() {
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -67,6 +69,19 @@ export default function Sheet() {
   };
 
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    console.log(">>>");
+    setTimer(
+      setTimeout(() => {
+        const sheet = book.sheets.find((s) => s.id === activeSheetIndx);
+        console.log(book.sheets, activeSheetIndx);
+        if (!sheet) return;
+        saveSheets(sheet);
+      }, 1000),
+    );
+
     const content = e.target.value;
     setBook((prev) => {
       return {
@@ -79,9 +94,17 @@ export default function Sheet() {
             return {
               ...sheet,
               data: {
-                ...sheet.data,
+                ...sheet.cells,
                 [clickedCells.currentClickedCell]: {
-                  ...sheet.data[clickedCells?.currentClickedCell],
+                  ...sheet.cells[clickedCells?.currentClickedCell],
+                  content: content,
+                },
+              },
+              dirtyCells: {
+                ...sheet.dirtyCells,
+                [clickedCells.currentClickedCell]: {
+                  ...(sheet.dirtyCells?.[clickedCells?.currentClickedCell] ||
+                    {}),
                   content: content,
                 },
               },
@@ -145,7 +168,7 @@ export default function Sheet() {
       };
 
       if (!val) {
-        val = book.sheets[activeSheetIndx]?.data[`${x}-${y}`]?.content || "";
+        val = book.sheets[activeSheetIndx]?.cells[`${x}-${y}`]?.content || "";
       }
       visibleCells.push(
         <Grid

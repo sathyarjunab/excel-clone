@@ -39,6 +39,7 @@ export const defaultBook: Workbook = {
       hasChanged: false,
       id: 1,
       name: "Sheet 1",
+      dirtyCells: {},
     },
   ],
 };
