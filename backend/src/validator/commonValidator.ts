@@ -12,3 +12,9 @@ export const sheetSchema = Joi.object<Sheet>({
   cells: Joi.object().pattern(Joi.string(), gridSchema).required(),
   dirtyCells: Joi.object().pattern(Joi.string(), gridSchema).required(),
 });
+
+export const envSchema = Joi.object({
+  PORT: Joi.number().required(),
+  DATABASE_URL: Joi.string().required(),
+  CLIENT_ORIGIN: Joi.string().required(),
+});
