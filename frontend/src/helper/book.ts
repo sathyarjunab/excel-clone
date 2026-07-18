@@ -32,12 +32,12 @@ export const alphabets = [
 
 export const defaultBook: Workbook = {
   name: "Untitled Workbook",
-  activeSheetIndx: 1,
+  activeSheetIndx: 0,
   sheets: [
     {
-      data: {},
+      cells: {},
       hasChanged: false,
-      id: 1,
+      id: 0,
       name: "Sheet 1",
       dirtyCells: {},
     },

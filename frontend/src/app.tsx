@@ -1,18 +1,13 @@
-import { useContext, useEffect } from "react";
+import { useContext } from "react";
 import { Toaster } from "sonner";
 import Sheet from "./components/sheet";
-import { UserContext, UserProvider } from "./context";
+import { UserContext } from "./context";
 import "./scss/app.scss";
-import handleUserSession from "./util/auth";
-import { fetcher } from "./util/httpReq";
 
 export default function App() {
   const { book } = useContext(UserContext);
-  useEffect(() => {
-    handleUserSession();
-  }, []);
   return (
-    <UserProvider>
+    <>
       <Toaster richColors />
       <div className="app">
         <header className="app-header">
@@ -28,6 +23,6 @@ export default function App() {
         </div>
         {/* </div> */}
       </div>
-    </UserProvider>
+    </>
   );
 }

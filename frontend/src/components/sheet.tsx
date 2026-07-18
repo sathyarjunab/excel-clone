@@ -1,4 +1,11 @@
-import { CSSProperties, UIEvent, useContext, useRef, useState } from "react";
+import {
+  CSSProperties,
+  UIEvent,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import "../scss/sheet.scss";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
@@ -34,6 +41,7 @@ export default function Sheet() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+  const latestSheetRef = useRef<(typeof book.sheets)[0] | null>(null);
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -68,20 +76,15 @@ export default function Sheet() {
     });
   };
 
+  useEffect(() => {
+    latestSheetRef.current =
+      book.sheets.find((s) => s.id === activeSheetIndx) || null;
+  }, [book, activeSheetIndx]);
+
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (timer) {
       clearTimeout(timer);
     }
-    console.log(">>>");
-    setTimer(
-      setTimeout(() => {
-        const sheet = book.sheets.find((s) => s.id === activeSheetIndx);
-        console.log(book.sheets, activeSheetIndx);
-        if (!sheet) return;
-        saveSheets(sheet);
-      }, 1000),
-    );
-
     const content = e.target.value;
     setBook((prev) => {
       return {
@@ -93,10 +96,10 @@ export default function Sheet() {
           ) {
             return {
               ...sheet,
-              data: {
+              cells: {
                 ...sheet.cells,
                 [clickedCells.currentClickedCell]: {
-                  ...sheet.cells[clickedCells?.currentClickedCell],
+                  ...sheet.cells?.[clickedCells?.currentClickedCell],
                   content: content,
                 },
               },
@@ -108,12 +111,21 @@ export default function Sheet() {
                   content: content,
                 },
               },
+              hasChanged: true,
             };
           }
           return sheet;
         }),
       };
     });
+
+    setTimer(
+      setTimeout(() => {
+        const sheet = latestSheetRef.current;
+        if (!sheet) return;
+        saveSheets(sheet);
+      }, 10000),
+    );
   };
 
   // Use a fallback dimension if window is not available (SSR)

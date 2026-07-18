@@ -1,4 +1,4 @@
-import { createContext, useState, ReactNode, Dispatch } from "react";
+import { createContext, useState, ReactNode, Dispatch, useEffect } from "react";
 import { Sheet, Workbook } from "./types/book";
 import { defaultBook } from "./helper/book";
 import { fetcher } from "./util/httpReq";
@@ -24,13 +24,25 @@ export const UserContext = createContext<{
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState(null);
   const [book, setBook] = useState<Workbook>(defaultBook);
-  const [activeSheetIndx, setActiveSheetIndx] = useState(1);
+  const [activeSheetIndx, setActiveSheetIndx] = useState(0);
 
   const saveSheets = async (sheet: Sheet) => {
     const sheetToBeSaved = book.sheets.find((s) => s.id === sheet.id);
-    if (!sheetToBeSaved) return;
-    await fetcher<Sheet>("/api/sheets/save", sheetToBeSaved);
+    if (!sheetToBeSaved || !sheetToBeSaved.hasChanged) return;
+    await fetcher<Sheet>("/sheets/save", "POST", true, sheetToBeSaved);
+    setBook((prev) => ({
+      ...prev,
+      sheets: prev.sheets.map((s) => {
+        return s.id === sheetToBeSaved.id
+          ? { ...s, hasChanged: false, dirtyCells: {} }
+          : s;
+      }),
+    }));
   };
+
+  useEffect(() => {
+    console.log(book.sheets[0].dirtyCells);
+  }, [book]);
 
   return (
     <UserContext.Provider

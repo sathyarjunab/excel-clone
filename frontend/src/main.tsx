@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./styles.css";
 import App from "./app";
+import { UserProvider } from "./context";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -10,6 +11,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <UserProvider>
+      <App />
+    </UserProvider>
   </React.StrictMode>,
 );

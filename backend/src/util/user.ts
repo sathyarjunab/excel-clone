@@ -8,7 +8,14 @@ export async function userInjector(
 ) {
   const token = req.cookies?.token;
   if (!token) {
-    res.status(401).json({ error: "Unauthorized" });
+    const { token, user } = await createUser();
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+    req.user = user;
+    next();
     return;
   }
 
@@ -32,4 +39,29 @@ export async function userInjector(
 
   req.user = user;
   next();
+}
+
+export async function createUser() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+
+  const token = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  const hashedBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(token),
+  );
+
+  const hashedToken = Array.from(new Uint8Array(hashedBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  const user = await DB.user.create({
+    data: {
+      name: "test",
+      token: hashedToken,
+    },
+  });
+  return { token, user };
 }

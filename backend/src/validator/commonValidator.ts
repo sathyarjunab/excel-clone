@@ -3,7 +3,7 @@ import { Grid, Sheet } from "../types/book.js";
 
 export const gridSchema = Joi.object<Grid>({
   content: Joi.string().required(),
-  style: Joi.object().pattern(Joi.string(), Joi.string()).required(),
+  style: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
 });
 
 export const sheetSchema = Joi.object<Sheet>({

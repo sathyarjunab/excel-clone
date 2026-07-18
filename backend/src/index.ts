@@ -4,8 +4,8 @@ import { sheetsRouter } from "./routes/sheets.js";
 import dbPool from "./db/pool.js";
 import { validateEnv } from "./env.js";
 import { userInjector } from "./util/user.js";
-import authRouter from "./routes/auth.js";
 import cookieParser from "cookie-parser";
+import userRouter from "./routes/user.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -23,10 +23,9 @@ app.get("/api/health", (_req: Request, res: Response) =>
   res.json({ status: "ok" }),
 );
 
-app.use("/api/auth", authRouter);
-
 app.use(userInjector);
 
+app.use("/api/user", userRouter);
 app.use("/api/sheets", sheetsRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
