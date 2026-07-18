@@ -1,7 +1,7 @@
 import { createContext, useState, ReactNode, Dispatch } from "react";
 import { Sheet, Workbook } from "./types/book";
 import { defaultBook } from "./helper/book";
-import { fetchMe } from "./util/httpReq";
+import { fetcher } from "./util/httpReq";
 
 export const UserContext = createContext<{
   user: null | Record<string, string>;
@@ -29,7 +29,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const saveSheets = async (sheet: Sheet) => {
     const sheetToBeSaved = book.sheets.find((s) => s.id === sheet.id);
     if (!sheetToBeSaved) return;
-    await fetchMe<Sheet>("/api/sheets/save", sheetToBeSaved);
+    await fetcher<Sheet>("/api/sheets/save", sheetToBeSaved);
   };
 
   return (

@@ -8,4 +8,7 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
   const sheets = await sheetSchema.validateAsync(req.body, {
     stripUnknown: true,
   });
+
+  // 1. check if row exists for this sheets location if no then create it.
+  // 2. if there is a row update it
 });

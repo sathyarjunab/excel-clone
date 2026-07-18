@@ -3,16 +3,30 @@ import express, { NextFunction, Request, Response } from "express";
 import { sheetsRouter } from "./routes/sheets.js";
 import dbPool from "./db/pool.js";
 import { validateEnv } from "./env.js";
+import { userInjector } from "./util/user.js";
+import authRouter from "./routes/auth.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
+app.use(
+  cors({
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/api/health", (_req: Request, res: Response) =>
   res.json({ status: "ok" }),
 );
+
+app.use("/api/auth", authRouter);
+
+app.use(userInjector);
+
 app.use("/api/sheets", sheetsRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

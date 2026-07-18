@@ -1,11 +1,22 @@
-export async function fetchMe<T>(url: string, body: T) {
+export async function fetcher<T>(
+  url: string,
+  method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
+  secure: boolean = true,
+  body?: T,
+) {
   const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}`, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
-      // Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(body),
+    ...(secure ? { credentials: "include" } : {}),
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  return res.json();
+  const data = await res.json();
+
+  return {
+    status: res.status,
+    ok: res.ok,
+    data,
+  };
 }

@@ -11,3 +11,25 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model sheet {
+  id          String @id @default(uuid())
+  sheetName   String
+  // each row store 500 quantity of cells in it 
+  chunksCount Int
+  data        Json
+  range       String
+
+  userId String
+  user   user   @relation(fields: [userId], references: [id])
+
+  @@index([userId, chunksCount])
+}
+
+model user {
+  id    String  @id @default(uuid())
+  name  String?
+  token String  @unique
+
+  sheets sheet[]
+}
