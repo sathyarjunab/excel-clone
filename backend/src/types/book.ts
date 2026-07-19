@@ -5,8 +5,8 @@ export type Workbook = {
 };
 
 export type Sheet = {
-  id: number;
   name: string;
+  bookId: string;
   cells: Record<`${string}-${string}`, Grid>;
   dirtyCells: Record<`${string}-${string}`, Grid>;
 };

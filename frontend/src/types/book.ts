@@ -1,11 +1,14 @@
 export type Workbook = {
-  name: string;
-  sheets: Sheet[];
-  activeSheetIndx: number;
+  id: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  userId?: string;
+  bookName: string;
+  sheets?: Sheet[];
 };
 
 export type Sheet = {
-  id: number;
+  id: string;
   name: string;
   cells: Record<`${string}-${string}`, Grid>;
   dirtyCells: Record<`${string}-${string}`, Grid>;

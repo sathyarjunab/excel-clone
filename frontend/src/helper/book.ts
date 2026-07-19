@@ -31,8 +31,7 @@ export const alphabets = [
 ];
 
 export const defaultBook: Workbook = {
-  name: "Untitled Workbook",
-  activeSheetIndx: 0,
+  bookName: "sheet",
   sheets: [
     {
       cells: {},

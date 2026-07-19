@@ -1,28 +1,19 @@
-import { useContext } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
-import Sheet from "./components/sheet";
-import { UserContext } from "./context";
+import Book from "./components/book";
 import "./scss/app.scss";
+import Home from "./components/Home";
 
 export default function App() {
-  const { book } = useContext(UserContext);
   return (
     <>
       <Toaster richColors />
-      <div className="app">
-        <header className="app-header">
-          <h1>Excel Clone</h1>
-        </header>
-        <div className="config-tab"></div>
-        {/* <div>
-        <div className=""></div> */}
-        <div className="sheet">
-          {book.sheets.map((_sheet, index) => (
-            <Sheet key={index} />
-          ))}
-        </div>
-        {/* </div> */}
-      </div>
+
+      <Routes>
+        <Route path="/home" element={<Home />} />
+        <Route path="/book/:bookId" element={<Book />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Routes>
     </>
   );
 }

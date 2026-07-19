@@ -13,17 +13,35 @@ datasource db {
 }
 
 model sheet {
-  id          String @id @default(uuid())
+  id          String   @id @default(uuid())
   sheetName   String
   // each row store 500 quantity of cells in it 
   chunksCount Int
   data        Json
   range       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt 
 
   userId String
   user   user   @relation(fields: [userId], references: [id])
 
+  bookId String 
+  book book @relation(fields: [bookId], references: [id])
+
   @@index([userId, chunksCount])
+}
+
+model book {
+  id       String @id @default(uuid())
+  bookName String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   user   @relation(fields: [userId], references: [id])
+
+  sheets sheet[]
 }
 
 model user {
@@ -32,4 +50,8 @@ model user {
   token String  @unique
 
   sheets sheet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt 
+  books     book[]
 }

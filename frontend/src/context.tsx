@@ -1,59 +1,69 @@
-import { createContext, useState, ReactNode, Dispatch, useEffect } from "react";
+import { createContext, Dispatch, ReactNode, useState } from "react";
 import { Sheet, Workbook } from "./types/book";
-import { defaultBook } from "./helper/book";
 import { fetcher } from "./util/httpReq";
 
 export const UserContext = createContext<{
   user: null | Record<string, string>;
-  book: Workbook;
-  activeSheetIndx: number;
+  books: Workbook[] | null;
+  activeSheetIndx: string | null;
+  activeBookIndx: string | null;
+  setActiveBookIndx: Dispatch<React.SetStateAction<string | null>>;
   setUser: Dispatch<React.SetStateAction<null>>;
-  setBook: Dispatch<React.SetStateAction<Workbook>>;
-  setActiveSheetIndx: Dispatch<React.SetStateAction<number>>;
-  saveSheets: (sheet: Sheet) => void;
+  setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
+  setActiveSheetIndx: Dispatch<React.SetStateAction<string | null>>;
+  saveSheets: (bookId: string, sheet: Sheet) => void;
 }>({
   user: null,
-  book: defaultBook,
-  activeSheetIndx: 1,
+  books: null,
+  activeSheetIndx: null,
+  activeBookIndx: null,
+  setActiveBookIndx: () => {},
   setUser: () => {},
-  setBook: () => {},
+  setBooks: () => {},
   setActiveSheetIndx: () => {},
-  saveSheets: (sheet: Sheet) => {},
+  saveSheets: (bookId: string, sheet: Sheet) => {},
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState(null);
-  const [book, setBook] = useState<Workbook>(defaultBook);
-  const [activeSheetIndx, setActiveSheetIndx] = useState(0);
+  const [books, setBooks] = useState<Workbook[] | null>(null);
+  const [activeSheetIndx, setActiveSheetIndx] = useState<string | null>(null);
+  const [activeBookIndx, setActiveBookIndx] = useState<string | null>(null);
 
-  const saveSheets = async (sheet: Sheet) => {
-    const sheetToBeSaved = book.sheets.find((s) => s.id === sheet.id);
+  const saveSheets = async (bookId: string, sheet: Sheet) => {
+    const sheetToBeSaved = books
+      ?.find((b) => b.id === bookId)
+      ?.sheets?.find((s) => s.name === sheet.name);
     if (!sheetToBeSaved || !sheetToBeSaved.hasChanged) return;
     await fetcher<Sheet>("/sheets/save", "POST", true, sheetToBeSaved);
-    setBook((prev) => ({
-      ...prev,
-      sheets: prev.sheets.map((s) => {
-        return s.id === sheetToBeSaved.id
-          ? { ...s, hasChanged: false, dirtyCells: {} }
-          : s;
-      }),
-    }));
+    setBooks((prev) => {
+      return (prev ?? []).map((b) => {
+        return b.id !== bookId
+          ? b
+          : {
+              ...b,
+              sheets: b.sheets?.map((s) => {
+                return s.name === sheetToBeSaved.name
+                  ? { ...s, hasChanged: false, dirtyCells: {} }
+                  : s;
+              }),
+            };
+      });
+    });
   };
-
-  useEffect(() => {
-    console.log(book.sheets[0].dirtyCells);
-  }, [book]);
 
   return (
     <UserContext.Provider
       value={{
         user,
         setUser,
-        book,
-        setBook,
+        books,
+        setBooks,
         activeSheetIndx,
         setActiveSheetIndx,
         saveSheets,
+        activeBookIndx,
+        setActiveBookIndx,
       }}
     >
       {children}

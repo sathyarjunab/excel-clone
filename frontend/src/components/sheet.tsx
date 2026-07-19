@@ -10,6 +10,7 @@ import "../scss/sheet.scss";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
 import { UserContext } from "../context";
+import { Workbook } from "../types/book";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -26,7 +27,7 @@ const getYAxisWidth = (rowCount: number) => {
 };
 
 export default function Sheet() {
-  const { setBook, book, activeSheetIndx, saveSheets } =
+  const { setBooks, books, activeSheetIndx, activeBookIndx, saveSheets } =
     useContext(UserContext);
 
   const [rowsAndCol, setRowsAndCol] = useState<{
@@ -41,7 +42,10 @@ export default function Sheet() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
-  const latestSheetRef = useRef<(typeof book.sheets)[0] | null>(null);
+  const [book, _setBook] = useState<Workbook>(() => {
+    return books?.find((b) => b.id === activeBookIndx);
+  });
+  const latestSheetRef = (useRef < (typeof book?.sheets)[0]) | (null > null);
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -78,15 +82,15 @@ export default function Sheet() {
 
   useEffect(() => {
     latestSheetRef.current =
-      book.sheets.find((s) => s.id === activeSheetIndx) || null;
-  }, [book, activeSheetIndx]);
+      books.sheets.find((s) => s.id === activeSheetIndx) || null;
+  }, [books, activeSheetIndx]);
 
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (timer) {
       clearTimeout(timer);
     }
     const content = e.target.value;
-    setBook((prev) => {
+    setBooks((prev) => {
       return {
         ...prev,
         sheets: prev.sheets.map((sheet) => {

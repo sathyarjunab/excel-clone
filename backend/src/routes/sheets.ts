@@ -25,8 +25,8 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
   // Get all the sheets from the db
   const sheets = await DB.sheet.findMany({
     where: {
-      sheetName: sheetsMetaData.name,
       userId: req.user.id,
+      bookId: sheetsMetaData.bookId,
     },
   });
 
@@ -72,6 +72,7 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
         sheetName: sheetsMetaData.name,
         userId: req.user.id,
         chunksCount: sheets.length + 1,
+        bookId: sheetsMetaData.bookId,
       });
     } else {
       // If it is there then we update the existing row with the data
