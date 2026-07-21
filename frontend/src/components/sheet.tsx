@@ -10,7 +10,7 @@ import "../scss/sheet.scss";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
 import { UserContext } from "../context";
-import { Workbook } from "../types/book";
+import { Sheet as SheetType, Workbook } from "../types/book";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -42,10 +42,10 @@ export default function Sheet() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
-  const [book, _setBook] = useState<Workbook>(() => {
+  const [book, _setBook] = useState<Workbook | undefined>(() => {
     return books?.find((b) => b.id === activeBookIndx);
   });
-  const latestSheetRef = (useRef < (typeof book?.sheets)[0]) | (null > null);
+  const latestSheetRef = useRef<SheetType | null>(null);
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -82,7 +82,7 @@ export default function Sheet() {
 
   useEffect(() => {
     latestSheetRef.current =
-      books.sheets.find((s) => s.id === activeSheetIndx) || null;
+      book?.sheets.find((s) => s.id === activeSheetIndx) || null;
   }, [books, activeSheetIndx]);
 
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,43 +91,50 @@ export default function Sheet() {
     }
     const content = e.target.value;
     setBooks((prev) => {
-      return {
-        ...prev,
-        sheets: prev.sheets.map((sheet) => {
-          if (
-            sheet.id === prev.activeSheetIndx &&
-            clickedCells?.currentClickedCell
-          ) {
-            return {
-              ...sheet,
-              cells: {
-                ...sheet.cells,
-                [clickedCells.currentClickedCell]: {
-                  ...sheet.cells?.[clickedCells?.currentClickedCell],
-                  content: content,
-                },
-              },
-              dirtyCells: {
-                ...sheet.dirtyCells,
-                [clickedCells.currentClickedCell]: {
-                  ...(sheet.dirtyCells?.[clickedCells?.currentClickedCell] ||
-                    {}),
-                  content: content,
-                },
-              },
-              hasChanged: true,
-            };
-          }
-          return sheet;
-        }),
-      };
+      return (
+        prev?.map((b) => {
+          return b.id !== activeBookIndx
+            ? b
+            : {
+                ...b,
+                sheets: b.sheets.map((sheet) => {
+                  if (
+                    sheet.id === activeSheetIndx &&
+                    clickedCells?.currentClickedCell
+                  ) {
+                    return {
+                      ...sheet,
+                      cells: {
+                        ...sheet.cells,
+                        [clickedCells.currentClickedCell]: {
+                          ...sheet.cells?.[clickedCells?.currentClickedCell],
+                          content: content,
+                        },
+                      },
+                      dirtyCells: {
+                        ...sheet.dirtyCells,
+                        [clickedCells.currentClickedCell]: {
+                          ...(sheet.dirtyCells?.[
+                            clickedCells?.currentClickedCell
+                          ] || {}),
+                          content: content,
+                        },
+                      },
+                      hasChanged: true,
+                    };
+                  }
+                  return sheet;
+                }),
+              };
+        }) ?? null
+      );
     });
 
     setTimer(
       setTimeout(() => {
         const sheet = latestSheetRef.current;
-        if (!sheet) return;
-        saveSheets(sheet);
+        if (!sheet || !book) return;
+        saveSheets(book.id, sheet);
       }, 10000),
     );
   };
@@ -184,7 +191,10 @@ export default function Sheet() {
       };
 
       if (!val) {
-        val = book.sheets[activeSheetIndx]?.cells[`${x}-${y}`]?.content || "";
+        val =
+          book?.sheets?.find((s) => s.id === activeSheetIndx)?.cells[
+            `${x}-${y}`
+          ]?.content || "";
       }
       visibleCells.push(
         <Grid

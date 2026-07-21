@@ -1,10 +1,11 @@
-import { Router } from "express";
-import { DB } from "../db/pool.js";
-import Joi from "joi";
 import { Optional } from "@prisma/client/runtime/client";
-import { book, Prisma } from "../generated/prisma/client.js";
+import { Router } from "express";
+import Joi from "joi";
+import { DB } from "../db/pool.js";
+import { Prisma } from "../generated/prisma/client.js";
+import { insertDummySheets } from "../util/book.js";
 
-type BookWithSheets = Prisma.bookGetPayload<{
+export type BookWithSheets = Prisma.bookGetPayload<{
   include: {
     sheets: true;
   };
@@ -24,7 +25,7 @@ router.get("/books", async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-  const books: Optional<BookWithSheets>[] = await DB.book.findMany({
+  let books: Optional<BookWithSheets>[] = await DB.book.findMany({
     where: {
       userId,
     },
@@ -43,6 +44,8 @@ router.get("/books", async (req, res) => {
       }),
     );
   }
+
+  books = insertDummySheets(books);
 
   res.status(200).send(books);
 });

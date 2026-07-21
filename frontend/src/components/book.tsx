@@ -1,5 +1,5 @@
 import { useContext, useEffect } from "react";
-import { Route, Routes, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { UserContext } from "../context";
 import { Sheet as sheetType } from "../types/book";
 import Sheet from "./sheet";
@@ -7,7 +7,7 @@ import Sheet from "./sheet";
 export default function Book() {
   const { bookId } = useParams();
   const { books, setActiveSheetIndx } = useContext(UserContext);
-  const defaultSheet: sheetType[] = [
+  const defaultSheet: Required<sheetType>[] = [
     {
       id: "default_sheet",
       cells: {},
@@ -18,8 +18,9 @@ export default function Book() {
   ];
 
   useEffect(() => {
-    const sheet =
+    let sheet =
       (books ?? []).find((b) => b.id === bookId)?.sheets ?? defaultSheet;
+    sheet = sheet.length === 0 ? defaultSheet : sheet;
     setActiveSheetIndx(sheet[0].id);
   }, []);
 

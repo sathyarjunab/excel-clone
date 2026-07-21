@@ -1,4 +1,4 @@
-import { createContext, Dispatch, ReactNode, useState } from "react";
+import { createContext, Dispatch, ReactNode, useEffect, useState } from "react";
 import { Sheet, Workbook } from "./types/book";
 import { fetcher } from "./util/httpReq";
 
@@ -51,6 +51,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       });
     });
   };
+
+  useEffect(() => {
+    console.log(books);
+  }, [books]);
 
   return (
     <UserContext.Provider

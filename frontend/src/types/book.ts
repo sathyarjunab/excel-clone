@@ -4,7 +4,7 @@ export type Workbook = {
   updatedAt?: Date;
   userId?: string;
   bookName: string;
-  sheets?: Sheet[];
+  sheets: Sheet[];
 };
 
 export type Sheet = {
