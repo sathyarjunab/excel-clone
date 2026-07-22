@@ -15,9 +15,6 @@ export type Sheet = {
   range: string;
   userId: string;
   bookId: string;
-
-  dirtyCells: Record<`${string}-${string}`, Grid>;
-  hasChanged: boolean;
 };
 
 export type Grid = {

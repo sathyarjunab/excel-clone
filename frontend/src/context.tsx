@@ -1,62 +1,96 @@
-import { createContext, Dispatch, ReactNode, useEffect, useState } from "react";
+import {
+  createContext,
+  Dispatch,
+  ReactNode,
+  useCallback,
+  useState,
+} from "react";
 import { Sheet, Workbook } from "./types/book";
+import { ContextBody } from "./types/common";
 import { fetcher } from "./util/httpReq";
+
+const contextBody = {
+  dirtyCells: {},
+};
 
 export const UserContext = createContext<{
   user: null | Record<string, string>;
   books: Workbook[] | null;
+  activeSheetName: string | null;
   activeBookIndx: string | null;
   activeSheet: Sheet[] | null;
+  contextBody: ContextBody;
   setActiveBookIndx: Dispatch<React.SetStateAction<string | null>>;
   setUser: Dispatch<React.SetStateAction<null>>;
   setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
-  setActiveSheets: Dispatch<React.SetStateAction<Sheet[] | null>>;
-  saveSheets: (bookId: string, sheet: Sheet) => void;
+  setActiveSheetName: Dispatch<React.SetStateAction<string | null>>;
+  setActiveSheet: Dispatch<React.SetStateAction<Sheet[] | null>>;
+  setContextBody: Dispatch<React.SetStateAction<ContextBody>>;
+  saveSheets: (sheet: Sheet) => void;
+  fetchSheetData: (
+    sheetName: string,
+    startRow: number,
+    endRow: number,
+    startCol: number,
+    endCol: number,
+  ) => void;
 }>({
   user: null,
   books: null,
+  activeSheetName: null,
   activeBookIndx: null,
   activeSheet: null,
+  contextBody,
   setActiveBookIndx: () => {},
   setUser: () => {},
   setBooks: () => {},
-  setActiveSheets: () => {},
-  saveSheets: (bookId: string, sheet: Sheet) => {},
+  setActiveSheetName: () => {},
+  saveSheets: () => {},
+  fetchSheetData: () => {},
+  setActiveSheet: () => {},
+  setContextBody: () => {},
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState(null);
   const [books, setBooks] = useState<Workbook[] | null>(null);
-  const [activeSheet, setActiveSheets] = useState<Sheet[] | null>(null);
+  const [activeSheet, setActiveSheet] = useState<Sheet[] | null>(null);
+  const [activeSheetName, setActiveSheetName] = useState<string | null>(null);
   const [activeBookIndx, setActiveBookIndx] = useState<string | null>(null);
+  const [contextBody, setContextBody] = useState<ContextBody>({
+    dirtyCells: {},
+  });
 
-  const saveSheets = async (bookId: string, sheet: Sheet) => {
-    const sheetToBeSaved = books
-      ?.find((b) => b.id === bookId)
-      ?.sheets?.find((s) => s.sheetName === sheet.sheetName);
-    if (!sheetToBeSaved || !sheetToBeSaved.hasChanged) return;
-    await fetcher<Sheet>("/sheets/save", "POST", true, sheetToBeSaved);
-    setBooks((prev) => {
-      return (prev ?? []).map((b) => {
-        return b.id !== bookId
-          ? b
-          : {
-              ...b,
-              sheets: b.sheets?.map((s) => {
-                return s.sheetName === sheetToBeSaved.sheetName
-                  ? { ...s, hasChanged: false, dirtyCells: {} }
-                  : s;
-              }),
-            };
+  const saveSheets = useCallback(async () => {
+    await fetcher<Sheet>(
+      "/sheets/save",
+      "POST",
+      true,
+      undefined,
+      contextBody.dirtyCells,
+    );
+  }, []);
+
+  const fetchSheetData = useCallback(
+    async (
+      sheetName: string,
+      startRow: number,
+      endRow: number,
+      startCol: number,
+      endCol: number,
+    ) => {
+      const { data } = await fetcher<Sheet[]>("/sheets/sheet", "GET", true, {
+        sheetName,
+        startRow,
+        endRow,
+        startCol,
+        endCol,
       });
-    });
-  };
 
-  const fetchSheet = async (sheetIdx: string) => {};
-
-  useEffect(() => {
-    console.log(books);
-  }, [books]);
+      setActiveSheet(data);
+    },
+    [],
+  );
 
   return (
     <UserContext.Provider
@@ -64,12 +98,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
         user,
         books,
         activeBookIndx,
+        activeSheetName,
         activeSheet,
+        contextBody,
         setUser,
         setBooks,
+        setActiveSheetName,
         saveSheets,
         setActiveBookIndx,
-        setActiveSheets,
+        fetchSheetData,
+        setActiveSheet,
+        setContextBody,
       }}
     >
       {children}

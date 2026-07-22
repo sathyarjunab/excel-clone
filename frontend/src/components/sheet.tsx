@@ -27,8 +27,7 @@ const getYAxisWidth = (rowCount: number) => {
 };
 
 export default function Sheet() {
-  const { setBooks, books, activeSheetIndx, activeBookIndx, saveSheets } =
-    useContext(UserContext);
+  const { activeSheet, saveSheets } = useContext(UserContext);
 
   const [rowsAndCol, setRowsAndCol] = useState<{
     rows: number;
@@ -42,9 +41,7 @@ export default function Sheet() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
-  const [book, _setBook] = useState<Workbook | undefined>(() => {
-    return books?.find((b) => b.id === activeBookIndx);
-  });
+
   const latestSheetRef = useRef<SheetType | null>(null);
 
   const [xAxisStyle] = useState<CSSProperties>({
@@ -80,61 +77,19 @@ export default function Sheet() {
     });
   };
 
-  useEffect(() => {
-    latestSheetRef.current =
-      book?.sheets.find((s) => s.id === activeSheetIndx) || null;
-  }, [books, activeSheetIndx]);
-
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (timer) {
       clearTimeout(timer);
     }
     const content = e.target.value;
-    setBooks((prev) => {
-      return (
-        prev?.map((b) => {
-          return b.id !== activeBookIndx
-            ? b
-            : {
-                ...b,
-                sheets: b.sheets.map((sheet) => {
-                  if (
-                    sheet.id === activeSheetIndx &&
-                    clickedCells?.currentClickedCell
-                  ) {
-                    return {
-                      ...sheet,
-                      cells: {
-                        ...sheet.cells,
-                        [clickedCells.currentClickedCell]: {
-                          ...sheet.cells?.[clickedCells?.currentClickedCell],
-                          content: content,
-                        },
-                      },
-                      dirtyCells: {
-                        ...sheet.dirtyCells,
-                        [clickedCells.currentClickedCell]: {
-                          ...(sheet.dirtyCells?.[
-                            clickedCells?.currentClickedCell
-                          ] || {}),
-                          content: content,
-                        },
-                      },
-                      hasChanged: true,
-                    };
-                  }
-                  return sheet;
-                }),
-              };
-        }) ?? null
-      );
-    });
+
+    //TODO: ADD THE REQUIRED CHANGES FOR SAVING THE SHEET DATA
 
     setTimer(
       setTimeout(() => {
         const sheet = latestSheetRef.current;
-        if (!sheet || !book) return;
-        saveSheets(book.id, sheet);
+        if (!sheet) return;
+        saveSheets(sheet);
       }, 10000),
     );
   };
@@ -192,9 +147,8 @@ export default function Sheet() {
 
       if (!val) {
         val =
-          book?.sheets?.find((s) => s.id === activeSheetIndx)?.cells[
-            `${x}-${y}`
-          ]?.content || "";
+          activeSheet?.filter((s) => s.data[`${x}-${y}`])[0]?.data[`${x}-${y}`]
+            ?.content ?? "";
       }
       visibleCells.push(
         <Grid

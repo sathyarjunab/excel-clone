@@ -1,22 +1,17 @@
+import { JsonObject } from "@prisma/client/runtime/client";
 import { Request, Response, Router } from "express";
-import {
-  sheetGetterSchema,
-  sheetSchema,
-} from "../validator/commonValidator.js";
+import Joi from "joi";
 import { DB } from "../db/pool.js";
-import { Prisma, sheet } from "../generated/prisma/client.js";
+import { Prisma } from "../generated/prisma/client.js";
 import {
   rangeCalculator,
   rangeGetter,
   rowsColConvertor,
 } from "../util/sheet.js";
 import {
-  DefaultArgs,
-  JsonObject,
-  Optional,
-} from "@prisma/client/runtime/client";
-import Joi from "joi";
-import { start } from "node:repl";
+  sheetGetterSchema,
+  sheetSchema,
+} from "../validator/commonValidator.js";
 
 export const sheetsRouter = Router();
 
@@ -125,6 +120,7 @@ sheetsRouter.get("/sheetNames/:bookId", async (req, res) => {
     distinct: "sheetName",
     select: {
       sheetName: true,
+      id: true,
     },
   });
 

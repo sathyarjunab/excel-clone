@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { fetcher } from "../util/httpReq";
 import Sheet from "./sheet";
+import { UserContext } from "../context";
 
 export default function Book() {
+  const { setActiveSheetName } = useContext(UserContext);
+
   const { bookId } = useParams();
   const [sheetNames, setSheetNames] =
     useState<{ sheetName: string; id: string }[]>();
@@ -13,17 +16,13 @@ export default function Book() {
   }, []);
 
   async function fetchSheetNameAndSheet() {
-    const { data } = await fetcher<{ sheetName: string; id: string }[] | []>(
+    const { data } = await fetcher<{ sheetName: string; id: string }[]>(
       `/sheets/sheetNames/${bookId}`,
       "GET",
     );
 
-    const activeIndx = data[0]?.id;
-
     setSheetNames(data);
-    if (!activeIndx) return;
-
-    const sheet = await fetcher(`/sheets/sheet${activeIndx}`, "GET");
+    setActiveSheetName(data[0]?.sheetName ?? null);
   }
 
   return (
@@ -38,7 +37,7 @@ export default function Book() {
           <span
             key={index}
             onClick={() => {
-              // set a sheet;
+              setActiveSheetName(sheet.sheetName);
             }}
           >
             {sheet.sheetName}
