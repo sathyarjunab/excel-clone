@@ -10,9 +10,20 @@ export function rowsColConvertor(coOrdinates: string): [number, number] {
   return [Number(result[0]), Number(result[1])];
 }
 
-export function rangeCalculator(rows: number, col: number) {
+export function rangeGetter(rows: number, col: number) {
   const rowRange = Math.max(Math.ceil(rows / MAXROWS), 1) * MAXROWS;
   const colRange = Math.max(Math.ceil(col / MAXCOLUMN), 1) * MAXCOLUMN;
 
   return `${rowRange}-${colRange}`;
+}
+
+export function rangeCalculator(
+  startRow: number,
+  endRow: number,
+  startCol: number,
+  endCol: number,
+): string[] {
+  //TODO: YET TO BE IMPLEMENTED
+
+  return [""];
 }

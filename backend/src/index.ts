@@ -1,12 +1,13 @@
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import { sheetsRouter } from "./routes/sheets.js";
-import dbPool from "./db/pool.js";
+import dbPool, { DB } from "./db/pool.js";
 import { validateEnv } from "./env.js";
 import { userInjector } from "./util/user.js";
 import cookieParser from "cookie-parser";
 import userRouter from "./routes/user.js";
 import bookRouter from "./routes/book.js";
+import { Prisma } from "./generated/prisma/client.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -35,9 +36,21 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
+async function connectDb() {
+  const result = validateEnv();
+  if (!result) process.exit(1);
+
+  try {
+    DB.$queryRaw`SELECT 1`;
+  } catch (err) {
+    console.error("Failed to connect to PostgreSQL");
+    console.error(err);
+    process.exit(1);
+  }
+}
+
 app.listen(PORT, async () => {
   const result = validateEnv();
   if (!result) return;
-  await dbPool.connect();
-  console.log(`Backend listening on http://localhost:${PORT}`);
+  connectDb();
 });

@@ -1,14 +1,22 @@
 import { Request, Response, Router } from "express";
-import { sheetSchema } from "../validator/commonValidator.js";
+import {
+  sheetGetterSchema,
+  sheetSchema,
+} from "../validator/commonValidator.js";
 import { DB } from "../db/pool.js";
 import { Prisma, sheet } from "../generated/prisma/client.js";
-import { rangeCalculator, rowsColConvertor } from "../util/sheet.js";
+import {
+  rangeCalculator,
+  rangeGetter,
+  rowsColConvertor,
+} from "../util/sheet.js";
 import {
   DefaultArgs,
   JsonObject,
   Optional,
 } from "@prisma/client/runtime/client";
 import Joi from "joi";
+import { start } from "node:repl";
 
 export const sheetsRouter = Router();
 
@@ -50,7 +58,7 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
 
     if (!existingRow) {
       // If the row is not there then we create a new row then.
-      const range = rangeCalculator(rows, col);
+      const range = rangeGetter(rows, col);
 
       if (rangeToSheet.has(range)) {
         const existingRow = rangeToSheet.get(
@@ -103,6 +111,7 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
   res.status(200).send({ message: "chages saved" });
 });
 
+//fetches all the sheets of a book
 sheetsRouter.get("/sheetNames/:bookId", async (req, res) => {
   const bookId = await Joi.string().required().validateAsync(req.params.bookId);
   const userId = req.user?.id;
@@ -121,7 +130,32 @@ sheetsRouter.get("/sheetNames/:bookId", async (req, res) => {
 
   const sheetNames = sheets.map((s) => s.sheetName);
 
-  console.log(sheetNames);
-
   res.status(200).send(sheetNames);
+});
+
+// fetch the sheet's data by id
+sheetsRouter.get("/sheet", async (req, res) => {
+  const sheetInfo = await sheetGetterSchema.validateAsync(req.query);
+
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  const coOrdinatesToQuery = rangeCalculator(
+    sheetInfo.startRow,
+    sheetInfo.endRow,
+    sheetInfo.startCol,
+    sheetInfo.endCol,
+  );
+
+  const sheets = await DB.sheet.findMany({
+    where: {
+      userId,
+      sheetName: sheetInfo.sheetName,
+      range: {
+        in: coOrdinatesToQuery,
+      },
+    },
+  });
+
+  res.status(200).send(sheets);
 });

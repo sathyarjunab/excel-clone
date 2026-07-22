@@ -5,29 +5,29 @@ import { fetcher } from "./util/httpReq";
 export const UserContext = createContext<{
   user: null | Record<string, string>;
   books: Workbook[] | null;
-  activeSheetIndx: string | null;
   activeBookIndx: string | null;
+  activeSheet: Sheet[] | null;
   setActiveBookIndx: Dispatch<React.SetStateAction<string | null>>;
   setUser: Dispatch<React.SetStateAction<null>>;
   setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
-  setActiveSheetIndx: Dispatch<React.SetStateAction<string | null>>;
+  setActiveSheets: Dispatch<React.SetStateAction<Sheet[] | null>>;
   saveSheets: (bookId: string, sheet: Sheet) => void;
 }>({
   user: null,
   books: null,
-  activeSheetIndx: null,
   activeBookIndx: null,
+  activeSheet: null,
   setActiveBookIndx: () => {},
   setUser: () => {},
   setBooks: () => {},
-  setActiveSheetIndx: () => {},
+  setActiveSheets: () => {},
   saveSheets: (bookId: string, sheet: Sheet) => {},
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState(null);
   const [books, setBooks] = useState<Workbook[] | null>(null);
-  const [activeSheetIndx, setActiveSheetIndx] = useState<string | null>(null);
+  const [activeSheet, setActiveSheets] = useState<Sheet[] | null>(null);
   const [activeBookIndx, setActiveBookIndx] = useState<string | null>(null);
 
   const saveSheets = async (bookId: string, sheet: Sheet) => {
@@ -52,6 +52,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const fetchSheet = async (sheetIdx: string) => {};
+
   useEffect(() => {
     console.log(books);
   }, [books]);
@@ -60,14 +62,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     <UserContext.Provider
       value={{
         user,
-        setUser,
         books,
-        setBooks,
-        activeSheetIndx,
-        setActiveSheetIndx,
-        saveSheets,
         activeBookIndx,
+        activeSheet,
+        setUser,
+        setBooks,
+        saveSheets,
         setActiveBookIndx,
+        setActiveSheets,
       }}
     >
       {children}

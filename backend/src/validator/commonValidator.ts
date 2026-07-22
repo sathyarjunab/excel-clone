@@ -17,3 +17,11 @@ export const envSchema = Joi.object({
   DATABASE_URL: Joi.string().required(),
   CLIENT_ORIGIN: Joi.string().required(),
 });
+
+export const sheetGetterSchema = Joi.object({
+  sheetName: Joi.string().required(),
+  startRow: Joi.number().required(),
+  endRow: Joi.number().required(),
+  startCol: Joi.number().required(),
+  endCol: Joi.number().required(),
+});

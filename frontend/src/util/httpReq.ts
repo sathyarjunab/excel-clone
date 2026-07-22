@@ -2,9 +2,14 @@ export async function fetcher<K, T = unknown>(
   url: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   secure: boolean = true,
+  query?: Record<string, string | number>,
   body?: T,
 ) {
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}`, {
+  const q = Object.entries(query ?? {})
+    .map(([key, val]) => `${key}:${val}`)
+    .join("&");
+
+  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}?${q}`, {
     method,
     headers: {
       "Content-Type": "application/json",
