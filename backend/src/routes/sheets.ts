@@ -8,6 +8,7 @@ import {
   JsonObject,
   Optional,
 } from "@prisma/client/runtime/client";
+import Joi from "joi";
 
 export const sheetsRouter = Router();
 
@@ -100,4 +101,27 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
   await Promise.allSettled(promiseGroup);
 
   res.status(200).send({ message: "chages saved" });
+});
+
+sheetsRouter.get("/sheetNames/:bookId", async (req, res) => {
+  const bookId = await Joi.string().required().validateAsync(req.params.bookId);
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  const sheets = await DB.sheet.findMany({
+    where: {
+      bookId,
+      userId,
+    },
+    distinct: "sheetName",
+    select: {
+      sheetName: true,
+    },
+  });
+
+  const sheetNames = sheets.map((s) => s.sheetName);
+
+  console.log(sheetNames);
+
+  res.status(200).send(sheetNames);
 });

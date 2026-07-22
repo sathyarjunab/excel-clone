@@ -1,4 +1,4 @@
-export async function fetcher<T>(
+export async function fetcher<K, T = unknown>(
   url: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   secure: boolean = true,
@@ -12,7 +12,7 @@ export async function fetcher<T>(
     ...(secure ? { credentials: "include" } : {}),
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const data = await res.json();
+  const data = (await res.json()) as K;
 
   return {
     status: res.status,

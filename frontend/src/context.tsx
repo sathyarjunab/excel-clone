@@ -33,7 +33,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const saveSheets = async (bookId: string, sheet: Sheet) => {
     const sheetToBeSaved = books
       ?.find((b) => b.id === bookId)
-      ?.sheets?.find((s) => s.name === sheet.name);
+      ?.sheets?.find((s) => s.sheetName === sheet.sheetName);
     if (!sheetToBeSaved || !sheetToBeSaved.hasChanged) return;
     await fetcher<Sheet>("/sheets/save", "POST", true, sheetToBeSaved);
     setBooks((prev) => {
@@ -43,7 +43,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           : {
               ...b,
               sheets: b.sheets?.map((s) => {
-                return s.name === sheetToBeSaved.name
+                return s.sheetName === sheetToBeSaved.sheetName
                   ? { ...s, hasChanged: false, dirtyCells: {} }
                   : s;
               }),

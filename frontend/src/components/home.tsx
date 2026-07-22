@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { UserContext } from "../context";
 import { fetcher } from "../util/httpReq";
 import { useNavigate } from "react-router-dom";
+import { Workbook } from "../types/book";
 
 export default function Home() {
   const { books, setBooks, setActiveBookIndx } = useContext(UserContext);
@@ -10,7 +11,7 @@ export default function Home() {
 
   useEffect(() => {
     async function getBooks() {
-      const resp = await fetcher("/user/books", "GET", true);
+      const resp = await fetcher<Workbook[]>("/book/books", "GET", true);
       if (resp.ok) {
         setBooks(resp.data);
       } else {

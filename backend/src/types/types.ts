@@ -45,3 +45,13 @@ export enum Alphabets {
   Y = "Y",
   Z = "Z",
 }
+
+export type DeepOptional<T> = T extends (...args: any[]) => any
+  ? T
+  : T extends readonly (infer U)[]
+    ? readonly DeepOptional<U>[]
+    : T extends (infer U)[]
+      ? DeepOptional<U>[]
+      : T extends object
+        ? { [K in keyof T]?: DeepOptional<T[K]> }
+        : T;

@@ -2,14 +2,19 @@ import { Optional } from "@prisma/client/runtime/client";
 import { Router } from "express";
 import Joi from "joi";
 import { DB } from "../db/pool.js";
-import { Prisma } from "../generated/prisma/client.js";
+import { Prisma, sheet } from "../generated/prisma/client.js";
 import { insertDummySheets } from "../util/book.js";
+import { DeepOptional } from "../types/types.js";
 
-export type BookWithSheets = Prisma.bookGetPayload<{
+type Book = Prisma.bookGetPayload<{
   include: {
     sheets: true;
   };
 }>;
+export type BookWithSheets = Omit<Book, "sheets"> & {
+  sheets: (sheet & { hasChanged?: boolean; dirtyCells?: object })[];
+};
+// >;
 
 const router = Router();
 
@@ -19,50 +24,6 @@ router.get("/amIWorthy", (req, res) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
   res.json({ user });
-});
-
-router.get("/books", async (req, res) => {
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-  let books: Optional<BookWithSheets>[] = await DB.book.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      sheets: true,
-    },
-  });
-
-  if (books.length === 0) {
-    books.push(
-      await DB.book.create({
-        data: {
-          bookName: "SheetName1",
-          userId: userId,
-        },
-      }),
-    );
-  }
-
-  books = insertDummySheets(books);
-
-  res.status(200).send(books);
-});
-
-router.post("/book", async (req, res) => {
-  const bookName = await Joi.string().min(3).validateAsync(req.body.bookName);
-
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-  const createdBook = await DB.book.create({
-    data: {
-      bookName,
-      userId,
-    },
-  });
-  res.status(200).send(createdBook);
 });
 
 export default router;

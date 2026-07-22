@@ -6,6 +6,7 @@ import { validateEnv } from "./env.js";
 import { userInjector } from "./util/user.js";
 import cookieParser from "cookie-parser";
 import userRouter from "./routes/user.js";
+import bookRouter from "./routes/book.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -27,6 +28,7 @@ app.use(userInjector);
 
 app.use("/api/user", userRouter);
 app.use("/api/sheets", sheetsRouter);
+app.use("/api/book", bookRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);

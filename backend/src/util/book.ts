@@ -2,12 +2,19 @@ import { Optional } from "@prisma/client/runtime/client";
 import { book } from "../generated/prisma/client.js";
 import { BookWithSheets } from "../routes/user.js";
 
-export const defaultSheet = {
+export const defaultSheet: Omit<
+  NonNullable<BookWithSheets["sheets"]>[number],
+  "createdAt" | "updatedAt"
+> = {
   id: "default_sheet",
-  cells: {},
+  data: {},
   dirtyCells: {},
   hasChanged: false,
-  name: "",
+  sheetName: "",
+  chunksCount: 1,
+  range: "",
+  userId: "",
+  bookId: "",
 };
 
 export function insertDummySheets(book: Optional<BookWithSheets>[]) {
@@ -16,7 +23,7 @@ export function insertDummySheets(book: Optional<BookWithSheets>[]) {
 
     return {
       ...b,
-      sheets: [defaultSheet],
+      sheets: [{ ...defaultSheet, bookId: book[0].id, userId: book[0].userId }],
     };
   });
 }

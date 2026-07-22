@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import Book from "./components/book";
 import "./scss/app.scss";
-import Home from "./components/Home";
+import Home from "./components/home";
 
 export default function App() {
   return (

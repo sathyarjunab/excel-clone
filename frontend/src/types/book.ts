@@ -4,13 +4,18 @@ export type Workbook = {
   updatedAt?: Date;
   userId?: string;
   bookName: string;
-  sheets: Sheet[];
+  sheets?: Sheet[];
 };
 
 export type Sheet = {
   id: string;
-  name: string;
-  cells: Record<`${string}-${string}`, Grid>;
+  data: Record<`${string}-${string}`, Grid>;
+  sheetName: string;
+  chunksCount: number;
+  range: string;
+  userId: string;
+  bookId: string;
+
   dirtyCells: Record<`${string}-${string}`, Grid>;
   hasChanged: boolean;
 };
