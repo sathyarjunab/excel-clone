@@ -18,8 +18,8 @@ export type Sheet = {
 };
 
 export type clientSheet = {
-  cellData: Record<`${string}-${string}`, string | null>;
-  dirtyCells: Record<`${string}-${string}`, string | null>;
+  cellData: Record<`${string}-${string}`, Grid>;
+  dirtyCells: Record<`${string}-${string}`, Grid>;
 };
 
 export type Grid = {

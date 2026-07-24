@@ -124,7 +124,7 @@ sheetsRouter.get("/sheetNames/:bookId", async (req, res) => {
     },
   });
 
-  const sheetNames = sheets.map((s) => s.sheetName);
+  const sheetNames = sheets.map((s) => ({ sheetNames: s.sheetName, id: s.id }));
 
   res.status(200).send(sheetNames);
 });

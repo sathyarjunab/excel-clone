@@ -8,7 +8,6 @@ import {
 } from "react";
 import { UserContext } from "../context";
 import "../scss/sheet.scss";
-import { MAX_COLUMNS_PER_VIEW, MAX_ROWS_PER_VIEW } from "../util/constents";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
 
@@ -17,6 +16,7 @@ export type SheetProps = {
   currentClickedCell: `${string}-${string}` | undefined;
 };
 
+//TODO: move this to constant file
 const CELL_WIDTH = 64;
 const CELL_HEIGHT = 20;
 const Y_AXIS_WIDTH = 40;
@@ -27,7 +27,7 @@ const getYAxisWidth = (rowCount: number) => {
 };
 
 export default function Sheet() {
-  const { activeSheet, saveSheets, fetchSheetData, latestSheetRef } =
+  const { saveSheets, latestSheetRef, version, setVersion } =
     useContext(UserContext);
 
   const [rowsAndCol, setRowsAndCol] = useState<{
@@ -41,7 +41,12 @@ export default function Sheet() {
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+  const timer = useRef<NodeJS.Timeout | null>(null);
+  const [cells, setCells] = useState<{
+    visibleXAxisCells?: any[];
+    visibleYAxisCells?: any[];
+    visibleCells?: any[];
+  }>();
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -69,18 +74,6 @@ export default function Sheet() {
     });
   };
 
-  useEffect(() => {
-    if (activeSheet?.[0]?.sheetName) {
-      fetchSheetData(
-        activeSheet[0].sheetName,
-        0,
-        MAX_ROWS_PER_VIEW,
-        0,
-        MAX_COLUMNS_PER_VIEW,
-      );
-    }
-  }, []);
-
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
     setScrollPosition({
       top: e.currentTarget.scrollTop,
@@ -89,8 +82,8 @@ export default function Sheet() {
   };
 
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (timer) {
-      clearTimeout(timer);
+    if (timer.current) {
+      clearTimeout(timer.current);
     }
     const content = e.target.value;
     const currentClickedCell = clickedCells?.currentClickedCell;
@@ -100,129 +93,140 @@ export default function Sheet() {
 
     latestSheetRef.current = {
       ...prev,
-      cellData: { ...prev?.cellData, [`${currentClickedCell}`]: content },
-      dirtyCells: { ...prev?.dirtyCells, [`${currentClickedCell}`]: content },
+      cellData: {
+        ...prev?.cellData,
+        [`${currentClickedCell}`]: { style: {}, content },
+      },
+      dirtyCells: {
+        ...prev?.dirtyCells,
+        [`${currentClickedCell}`]: { style: {}, content },
+      },
     };
 
-    setTimer(
-      setTimeout(() => {
-        const sheet = latestSheetRef.current;
-        // This sheet should send only the dirty cells
-        if (!sheet) return;
-        saveSheets(sheet);
-      }, 1000),
-    );
+    setVersion((prev) => prev + 1);
+
+    timer.current = setTimeout(() => {
+      saveSheets();
+    }, 2000);
   };
 
-  // Use a fallback dimension if window is not available (SSR)
-  const windowHeight =
-    typeof window !== "undefined" ? window.innerHeight : 1000;
-  const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1000;
+  useEffect(() => {
+    // Use a fallback dimension if window is not available (SSR)
+    const windowHeight =
+      typeof window !== "undefined" ? window.innerHeight : 1000;
+    const windowWidth =
+      typeof window !== "undefined" ? window.innerWidth : 1000;
 
-  // Calculate visible range
-  const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
-  const endRow = Math.min(
-    rowsAndCol.rows,
-    startRow + Math.ceil(windowHeight / CELL_HEIGHT),
-  );
+    // Calculate visible range
+    const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
+    const endRow = Math.min(
+      rowsAndCol.rows,
+      startRow + Math.ceil(windowHeight / CELL_HEIGHT),
+    );
 
-  if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
-    setRowsAndCol((prev) => {
-      return {
-        ...prev,
-        rows: prev.rows + 1000,
-      };
-    });
-  }
+    if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
+      setRowsAndCol((prev) => {
+        return {
+          ...prev,
+          rows: prev.rows + 1000,
+        };
+      });
+    }
 
-  const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
-  const endCol = Math.min(
-    rowsAndCol.cols,
-    startCol + Math.ceil(windowWidth / CELL_WIDTH),
-  );
+    const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
+    const endCol = Math.min(
+      rowsAndCol.cols,
+      startCol + Math.ceil(windowWidth / CELL_WIDTH),
+    );
 
-  if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
-    setRowsAndCol((prev) => {
-      return {
-        ...prev,
-        cols: prev.cols + 1000,
-      };
-    });
-  }
+    if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
+      setRowsAndCol((prev) => {
+        return {
+          ...prev,
+          cols: prev.cols + 1000,
+        };
+      });
+    }
+    const visibleCells: any = [];
+    for (let x = startRow; x < endRow; x++) {
+      for (let y = startCol; y < endCol; y++) {
+        if (x === 0 || y === 0) continue;
 
-  const visibleCells = [];
+        let val: string | null = null;
+        const top = x * CELL_HEIGHT;
+        const left = yAxisWidth + (y - 1) * CELL_WIDTH;
 
-  for (let x = startRow; x < endRow; x++) {
-    for (let y = startCol; y < endCol; y++) {
-      if (x === 0 || y === 0) continue;
+        const customStyle: CSSProperties = {
+          top: `${top}px`,
+          left: `${left}px`,
+        };
 
-      let val: string | null = null;
-      const top = x * CELL_HEIGHT;
-      const left = yAxisWidth + (y - 1) * CELL_WIDTH;
+        if (!val) {
+          val = latestSheetRef.current?.cellData[`${x}-${y}`]?.content ?? null;
+        }
 
-      const customStyle: CSSProperties = {
-        top: `${top}px`,
-        left: `${left}px`,
-      };
-
-      if (!val) {
-        val = latestSheetRef.current?.cellData[`${x}-${y}`] ?? null;
+        visibleCells.push(
+          <Grid
+            handleDataEntry={handleDataEntry}
+            handleDoubleClick={() => handleDoubleClick(x, y)}
+            key={`${x}-${y}`}
+            value={val}
+            customStyle={customStyle}
+            coOrdinates={`${x}-${y}`}
+            clickedCells={clickedCells}
+          />,
+        );
       }
-      visibleCells.push(
-        <Grid
-          handleDataEntry={handleDataEntry}
-          handleDoubleClick={() => handleDoubleClick(x, y)}
-          key={`${x}-${y}`}
-          value={val}
-          customStyle={customStyle}
-          coOrdinates={`${x}-${y}`}
-          clickedCells={clickedCells}
-        />,
+    }
+
+    const xAxisCells: any = [];
+    for (let y = startCol; y < endCol; y++) {
+      if (y === 0) continue;
+
+      xAxisCells.push(
+        <div
+          key={`x-${y}`}
+          className="grid-cell axis-cell"
+          style={{
+            ...xAxisStyle,
+            left: `${yAxisWidth + (y - 1) * CELL_WIDTH}px`,
+            top: 0,
+            width: `${CELL_WIDTH}px`,
+            height: `${CELL_HEIGHT}px`,
+          }}
+        >
+          {numberToAlphabet(y, "")}
+        </div>,
       );
     }
-  }
 
-  const visibleXAxisCells = [];
-  for (let y = startCol; y < endCol; y++) {
-    if (y === 0) continue;
-    visibleXAxisCells.push(
-      <div
-        key={`x-${y}`}
-        className="grid-cell axis-cell"
-        style={{
-          ...xAxisStyle,
-          // Same coordinate model as the data cells so the letter always
-          // sits directly above its column, regardless of scroll offset.
-          left: `${yAxisWidth + (y - 1) * CELL_WIDTH}px`,
-          top: 0,
-          width: `${CELL_WIDTH}px`,
-          height: `${CELL_HEIGHT}px`,
-        }}
-      >
-        {numberToAlphabet(y, "")}
-      </div>,
-    );
-  }
+    const yAxisCells: any = [];
+    for (let x = startRow; x < endRow; x++) {
+      if (x === 0) continue;
 
-  const visibleYAxisCells = [];
-  for (let x = startRow; x < endRow; x++) {
-    if (x === 0) continue;
-    visibleYAxisCells.push(
-      <div
-        key={`y-${x}`}
-        className="grid-cell axis-cell"
-        style={{
-          ...yAxisStyle,
-          left: 0,
-          top: `${x * CELL_HEIGHT}px`,
-          width: `${yAxisWidth}px`,
-          height: `${CELL_HEIGHT}px`,
-        }}
-      >
-        {x.toString()}
-      </div>,
-    );
-  }
+      yAxisCells.push(
+        <div
+          key={`y-${x}`}
+          className="grid-cell axis-cell"
+          style={{
+            ...yAxisStyle,
+            left: 0,
+            top: `${x * CELL_HEIGHT}px`,
+            width: `${yAxisWidth}px`,
+            height: `${CELL_HEIGHT}px`,
+          }}
+        >
+          {x.toString()}
+        </div>,
+      );
+    }
+
+    setCells({
+      visibleCells: visibleCells,
+      visibleYAxisCells: yAxisCells,
+      visibleXAxisCells: xAxisCells,
+    });
+  }, [version, clickedCells, scrollPosition]);
 
   return (
     <div className="sheet-viewport" ref={viewportRef} onScroll={handleScroll}>
@@ -244,7 +248,7 @@ export default function Sheet() {
             transform: `translateY(${scrollPosition.top}px)`,
           }}
         >
-          {visibleXAxisCells}
+          {cells?.visibleXAxisCells}
         </div>
         {/* Row headers (1, 2, 3 ...): pinned to the left on horizontal
             scroll, but free to move vertically so each number tracks its
@@ -257,7 +261,7 @@ export default function Sheet() {
             transform: `translateX(${scrollPosition.left}px)`,
           }}
         >
-          {visibleYAxisCells}
+          {cells?.visibleYAxisCells}
         </div>
         {/* Top-left corner: pinned in both directions. */}
         <div
@@ -273,7 +277,7 @@ export default function Sheet() {
             transform: `translate(${scrollPosition.left}px, ${scrollPosition.top}px)`,
           }}
         />
-        {visibleCells}
+        {cells?.visibleCells}
       </div>
     </div>
   );
