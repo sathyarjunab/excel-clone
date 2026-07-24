@@ -1,6 +1,7 @@
 .sheet-viewport {
-  width: 100vw;
-  height: 73vh;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   position: relative;
 }

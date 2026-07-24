@@ -7,7 +7,7 @@ export const gridSchema = Joi.object<Grid>({
 });
 
 export const sheetSchema = Joi.object<Sheet>({
-  bookId: Joi.number().required,
+  bookId: Joi.string().required(),
   name: Joi.string().required(),
   dirtyCells: Joi.object().pattern(Joi.string(), gridSchema).required(),
 });

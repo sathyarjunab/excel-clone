@@ -6,11 +6,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { UserContext } from "../context";
 import "../scss/sheet.scss";
+import { MAX_COLUMNS_PER_VIEW, MAX_ROWS_PER_VIEW } from "../util/constents";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
-import { UserContext } from "../context";
-import { Sheet as SheetType, Workbook } from "../types/book";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -27,7 +27,8 @@ const getYAxisWidth = (rowCount: number) => {
 };
 
 export default function Sheet() {
-  const { activeSheet, saveSheets } = useContext(UserContext);
+  const { activeSheet, saveSheets, fetchSheetData, latestSheetRef } =
+    useContext(UserContext);
 
   const [rowsAndCol, setRowsAndCol] = useState<{
     rows: number;
@@ -41,8 +42,6 @@ export default function Sheet() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
-
-  const latestSheetRef = useRef<SheetType | null>(null);
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -70,6 +69,18 @@ export default function Sheet() {
     });
   };
 
+  useEffect(() => {
+    if (activeSheet?.[0]?.sheetName) {
+      fetchSheetData(
+        activeSheet[0].sheetName,
+        0,
+        MAX_ROWS_PER_VIEW,
+        0,
+        MAX_COLUMNS_PER_VIEW,
+      );
+    }
+  }, []);
+
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
     setScrollPosition({
       top: e.currentTarget.scrollTop,
@@ -82,15 +93,24 @@ export default function Sheet() {
       clearTimeout(timer);
     }
     const content = e.target.value;
+    const currentClickedCell = clickedCells?.currentClickedCell;
 
-    //TODO: ADD THE REQUIRED CHANGES FOR SAVING THE SHEET DATA
+    // here we need to add the value to the dirty cells and the active sheet
+    const prev = latestSheetRef.current;
+
+    latestSheetRef.current = {
+      ...prev,
+      cellData: { ...prev?.cellData, [`${currentClickedCell}`]: content },
+      dirtyCells: { ...prev?.dirtyCells, [`${currentClickedCell}`]: content },
+    };
 
     setTimer(
       setTimeout(() => {
         const sheet = latestSheetRef.current;
+        // This sheet should send only the dirty cells
         if (!sheet) return;
         saveSheets(sheet);
-      }, 10000),
+      }, 1000),
     );
   };
 
@@ -146,9 +166,7 @@ export default function Sheet() {
       };
 
       if (!val) {
-        val =
-          activeSheet?.filter((s) => s.data[`${x}-${y}`])[0]?.data[`${x}-${y}`]
-            ?.content ?? "";
+        val = latestSheetRef.current?.cellData[`${x}-${y}`] ?? null;
       }
       visibleCells.push(
         <Grid

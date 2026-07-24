@@ -17,6 +17,11 @@ export type Sheet = {
   bookId: string;
 };
 
+export type clientSheet = {
+  cellData: Record<`${string}-${string}`, string | null>;
+  dirtyCells: Record<`${string}-${string}`, string | null>;
+};
+
 export type Grid = {
   style: Record<string, string>;
   content: string | null;

@@ -5,7 +5,7 @@ import Sheet from "./sheet";
 import { UserContext } from "../context";
 
 export default function Book() {
-  const { setActiveSheetName } = useContext(UserContext);
+  const { activeSheetName, setActiveSheetName } = useContext(UserContext);
 
   const { bookId } = useParams();
   const [sheetNames, setSheetNames] =
@@ -13,16 +13,20 @@ export default function Book() {
 
   useEffect(() => {
     fetchSheetNameAndSheet();
-  }, []);
+  }, [bookId]);
 
   async function fetchSheetNameAndSheet() {
-    const { data } = await fetcher<{ sheetName: string; id: string }[]>(
+    let { data } = await fetcher<{ sheetName: string; id: string }[]>(
       `/sheets/sheetNames/${bookId}`,
       "GET",
     );
 
+    if (data.length === 0) {
+      data = [{ sheetName: "New Sheet", id: "" }];
+    }
+
     setSheetNames(data);
-    setActiveSheetName(data[0]?.sheetName ?? null);
+    setActiveSheetName(data[0]?.sheetName ?? "New Sheet");
   }
 
   return (
@@ -32,16 +36,20 @@ export default function Book() {
       </header>
       <div className="config-tab"></div>
       <Sheet />
-      <div className="sheet">
-        {sheetNames?.map((sheet, index) => (
-          <span
-            key={index}
+      <div className="sheet-tabs">
+        {sheetNames?.map((sheet) => (
+          <button
+            key={sheet.id || sheet.sheetName}
+            type="button"
+            className={`sheet-tab ${
+              activeSheetName === sheet.sheetName ? "active" : ""
+            }`}
             onClick={() => {
               setActiveSheetName(sheet.sheetName);
             }}
           >
             {sheet.sheetName}
-          </span>
+          </button>
         ))}
       </div>
     </div>

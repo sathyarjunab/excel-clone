@@ -22,7 +22,7 @@ export default function Home() {
     getBooks();
   }, [setBooks]);
 
-  function handleSheetOpen(bookId: string) {
+  function handleBookOpen(bookId: string) {
     setActiveBookIndx(bookId);
     navigation(`/book/${bookId}`);
   }
@@ -63,7 +63,7 @@ export default function Home() {
                 <span
                   className="workbook-card-cta"
                   onClick={() => {
-                    handleSheetOpen(book.id);
+                    handleBookOpen(book.id);
                   }}
                 >
                   Open

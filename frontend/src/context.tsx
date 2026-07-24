@@ -3,15 +3,11 @@ import {
   Dispatch,
   ReactNode,
   useCallback,
+  useRef,
   useState,
 } from "react";
-import { Sheet, Workbook } from "./types/book";
-import { ContextBody } from "./types/common";
+import { clientSheet, Sheet, Workbook } from "./types/book";
 import { fetcher } from "./util/httpReq";
-
-const contextBody = {
-  dirtyCells: {},
-};
 
 export const UserContext = createContext<{
   user: null | Record<string, string>;
@@ -19,14 +15,12 @@ export const UserContext = createContext<{
   activeSheetName: string | null;
   activeBookIndx: string | null;
   activeSheet: Sheet[] | null;
-  contextBody: ContextBody;
   setActiveBookIndx: Dispatch<React.SetStateAction<string | null>>;
   setUser: Dispatch<React.SetStateAction<null>>;
   setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
-  setActiveSheetName: Dispatch<React.SetStateAction<string | null>>;
+  setActiveSheetName: Dispatch<React.SetStateAction<string>>;
   setActiveSheet: Dispatch<React.SetStateAction<Sheet[] | null>>;
-  setContextBody: Dispatch<React.SetStateAction<ContextBody>>;
-  saveSheets: (sheet: Sheet) => void;
+  saveSheets: (sheet: clientSheet) => void;
   fetchSheetData: (
     sheetName: string,
     startRow: number,
@@ -34,13 +28,13 @@ export const UserContext = createContext<{
     startCol: number,
     endCol: number,
   ) => void;
+  latestSheetRef: React.MutableRefObject<clientSheet | null>;
 }>({
   user: null,
   books: null,
   activeSheetName: null,
   activeBookIndx: null,
   activeSheet: null,
-  contextBody,
   setActiveBookIndx: () => {},
   setUser: () => {},
   setBooks: () => {},
@@ -48,28 +42,29 @@ export const UserContext = createContext<{
   saveSheets: () => {},
   fetchSheetData: () => {},
   setActiveSheet: () => {},
-  setContextBody: () => {},
+  latestSheetRef: { current: null },
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState(null);
   const [books, setBooks] = useState<Workbook[] | null>(null);
   const [activeSheet, setActiveSheet] = useState<Sheet[] | null>(null);
-  const [activeSheetName, setActiveSheetName] = useState<string | null>(null);
+  const [activeSheetName, setActiveSheetName] = useState<string>("New Sheet");
   const [activeBookIndx, setActiveBookIndx] = useState<string | null>(null);
-  const [contextBody, setContextBody] = useState<ContextBody>({
-    dirtyCells: {},
-  });
+  const latestSheetRef = useRef<clientSheet | null>(null);
 
   const saveSheets = useCallback(async () => {
-    await fetcher<Sheet>(
-      "/sheets/save",
-      "POST",
-      true,
-      undefined,
-      contextBody.dirtyCells,
-    );
-  }, []);
+    console.log(activeBookIndx);
+    await fetcher("/sheets/save", "POST", true, undefined, {
+      dirtyCells: latestSheetRef.current?.dirtyCells,
+      name: activeSheetName,
+      bookId: activeBookIndx,
+    });
+
+    if (latestSheetRef.current) {
+      latestSheetRef.current.dirtyCells = {};
+    }
+  }, [activeBookIndx, activeSheetName]);
 
   const fetchSheetData = useCallback(
     async (
@@ -100,7 +95,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
         activeBookIndx,
         activeSheetName,
         activeSheet,
-        contextBody,
         setUser,
         setBooks,
         setActiveSheetName,
@@ -108,7 +102,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setActiveBookIndx,
         fetchSheetData,
         setActiveSheet,
-        setContextBody,
+        latestSheetRef,
       }}
     >
       {children}

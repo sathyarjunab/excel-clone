@@ -6,10 +6,12 @@ export async function fetcher<K, T = unknown>(
   body?: T,
 ) {
   const q = Object.entries(query ?? {})
-    .map(([key, val]) => `${key}:${val}`)
+    .map(([key, val], indx) =>
+      indx === 0 ? `?${key}:${val}` : `${key}:${val}`,
+    )
     .join("&");
 
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}?${q}`, {
+  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}${q}`, {
     method,
     headers: {
       "Content-Type": "application/json",
