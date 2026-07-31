@@ -1,4 +1,5 @@
 const MAXROWS = 500;
 const MAXCOLUMN = 500;
+const THIRTY_DAYS = 1000 * 60 * 60 * 24 * 30;
 
-export { MAXROWS, MAXCOLUMN };
+export { MAXROWS, MAXCOLUMN, THIRTY_DAYS };

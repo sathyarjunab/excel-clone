@@ -22,13 +22,6 @@ export const UserContext = createContext<{
   setActiveSheetName: Dispatch<React.SetStateAction<string>>;
   setActiveSheet: Dispatch<React.SetStateAction<Sheet[] | null>>;
   saveSheets: () => void;
-  fetchSheetData: (
-    sheetName: string,
-    startRow: number,
-    endRow: number,
-    startCol: number,
-    endCol: number,
-  ) => void;
   latestSheetRef: React.MutableRefObject<clientSheet | null>;
   setVersion: Dispatch<React.SetStateAction<number>>;
 }>({
@@ -44,7 +37,6 @@ export const UserContext = createContext<{
   setBooks: () => {},
   setActiveSheetName: () => {},
   saveSheets: () => {},
-  fetchSheetData: () => {},
   setActiveSheet: () => {},
   setVersion: () => {},
 });
@@ -71,40 +63,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [activeBookIndx, activeSheetName]);
 
-  const fetchSheetData = useCallback(
-    async (
-      sheetName: string,
-      startRow: number,
-      endRow: number,
-      startCol: number,
-      endCol: number,
-    ) => {
-      const { data } = await fetcher<Sheet[]>("/sheets/sheet", "GET", true, {
-        sheetName,
-        startRow,
-        endRow,
-        startCol,
-        endCol,
-      });
-
-      setActiveSheet(data);
-
-      let cellData = {};
-      data?.forEach((sheet) => {
-        cellData = {
-          ...cellData,
-          ...sheet.data,
-        };
-      });
-
-      latestSheetRef.current = {
-        cellData,
-        dirtyCells: {},
-      };
-    },
-    [],
-  );
-
   return (
     <UserContext.Provider
       value={{
@@ -120,7 +78,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setActiveSheetName,
         saveSheets,
         setActiveBookIndx,
-        fetchSheetData,
         setActiveSheet,
         setVersion,
       }}

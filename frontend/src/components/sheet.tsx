@@ -10,6 +10,8 @@ import { UserContext } from "../context";
 import "../scss/sheet.scss";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
+import { Gatherer } from "../services/cacheService";
+import { IDB } from "../util/idb";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -21,13 +23,17 @@ const CELL_WIDTH = 64;
 const CELL_HEIGHT = 20;
 const Y_AXIS_WIDTH = 40;
 
+// Use a fallback dimension if window is not available (SSR)
+const WINDOW_HEIGHT = typeof window !== "undefined" ? window.innerHeight : 1000;
+const WINDOW_WIDTH = typeof window !== "undefined" ? window.innerWidth : 1000;
+
 const getYAxisWidth = (rowCount: number) => {
   const digits = Math.max(1, rowCount.toString().length);
   return Math.max(Y_AXIS_WIDTH, 16 + digits * 8);
 };
 
 export default function Sheet() {
-  const { saveSheets, latestSheetRef, version, setVersion } =
+  const { saveSheets, latestSheetRef, version, setVersion, activeSheetName } =
     useContext(UserContext);
 
   const [rowsAndCol, setRowsAndCol] = useState<{
@@ -47,6 +53,7 @@ export default function Sheet() {
     visibleYAxisCells?: any[];
     visibleCells?: any[];
   }>();
+  const [timeOutRef, setTimeOutRef] = useState<NodeJS.Timeout>();
 
   const [xAxisStyle] = useState<CSSProperties>({
     backgroundColor: "#F3F3F3",
@@ -79,6 +86,19 @@ export default function Sheet() {
       top: e.currentTarget.scrollTop,
       left: e.currentTarget.scrollLeft,
     });
+
+    const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
+    const endRow = Math.min(
+      rowsAndCol.rows,
+      startRow + Math.ceil(WINDOW_HEIGHT / CELL_HEIGHT),
+    );
+    const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
+    const endCol = Math.min(
+      rowsAndCol.cols,
+      startCol + Math.ceil(WINDOW_WIDTH / CELL_WIDTH),
+    );
+
+    handleFetchData({ endCol, endRow, startCol, startRow });
   };
 
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,18 +130,54 @@ export default function Sheet() {
     }, 2000);
   };
 
-  useEffect(() => {
-    // Use a fallback dimension if window is not available (SSR)
-    const windowHeight =
-      typeof window !== "undefined" ? window.innerHeight : 1000;
-    const windowWidth =
-      typeof window !== "undefined" ? window.innerWidth : 1000;
+  const handleFetchData = ({
+    endCol,
+    endRow,
+    startCol,
+    startRow,
+  }: {
+    startRow: number;
+    endRow: number;
+    startCol: number;
+    endCol: number;
+  }) => {
+    if (timeOutRef) {
+      clearTimeout(timeOutRef);
+    }
+    setTimeOutRef(
+      setTimeout(async () => {
+        const gatherer = new Gatherer(activeSheetName ?? "", new IDB());
+        const data = await gatherer.getData({
+          endCol,
+          endRow,
+          startCol,
+          topRow: startRow,
+        });
 
+        let cellData = {};
+        data?.forEach((sheet) => {
+          cellData = {
+            ...cellData,
+            ...sheet.data,
+          };
+        });
+
+        latestSheetRef.current = {
+          cellData,
+          dirtyCells: latestSheetRef.current?.dirtyCells ?? {},
+        };
+
+        setVersion((prev) => 1 + prev);
+      }, 100),
+    );
+  };
+
+  useEffect(() => {
     // Calculate visible range
     const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
     const endRow = Math.min(
       rowsAndCol.rows,
-      startRow + Math.ceil(windowHeight / CELL_HEIGHT),
+      startRow + Math.ceil(WINDOW_HEIGHT / CELL_HEIGHT),
     );
 
     if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
@@ -136,8 +192,10 @@ export default function Sheet() {
     const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
     const endCol = Math.min(
       rowsAndCol.cols,
-      startCol + Math.ceil(windowWidth / CELL_WIDTH),
+      startCol + Math.ceil(WINDOW_WIDTH / CELL_WIDTH),
     );
+
+    // handleFetchData({ endCol, endRow, startCol, startRow });
 
     if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
       setRowsAndCol((prev) => {

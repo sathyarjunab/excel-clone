@@ -1,17 +1,19 @@
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
-import { sheetsRouter } from "./routes/sheets.js";
-import dbPool, { DB } from "./db/pool.js";
+import { DB } from "./db/pool.js";
 import { validateEnv } from "./env.js";
-import { userInjector } from "./util/user.js";
-import cookieParser from "cookie-parser";
-import userRouter from "./routes/user.js";
 import bookRouter from "./routes/book.js";
-import { Prisma } from "./generated/prisma/client.js";
+import { sheetsRouter } from "./routes/sheets.js";
+import userRouter from "./routes/user.js";
+import { userInjector } from "./util/user.js";
+import debugRouter from "./routes/debug.js";
+import compression from "compression";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+app.use(compression());
 app.use(
   cors({
     origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
@@ -27,6 +29,7 @@ app.get("/api/health", (_req: Request, res: Response) =>
 
 app.use(userInjector);
 
+app.use("/debug", debugRouter);
 app.use("/api/user", userRouter);
 app.use("/api/sheets", sheetsRouter);
 app.use("/api/book", bookRouter);
@@ -41,7 +44,9 @@ async function connectDb() {
   if (!result) process.exit(1);
 
   try {
-    DB.$queryRaw`SELECT 1`;
+    await DB.$queryRaw`SELECT 1`;
+    console.log("DB is connected.....");
+    console.log(`You can access the api's in the port ${PORT}`);
   } catch (err) {
     console.error("Failed to connect to PostgreSQL");
     console.error(err);

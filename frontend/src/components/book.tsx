@@ -1,17 +1,12 @@
 import { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { UserContext } from "../context";
 import { fetcher } from "../util/httpReq";
 import Sheet from "./sheet";
-import { UserContext } from "../context";
-import { MAX_COLUMNS_PER_VIEW, MAX_ROWS_PER_VIEW } from "../util/constents";
 
 export default function Book() {
-  const {
-    activeSheetName,
-    setActiveSheetName,
-    fetchSheetData,
-    setActiveBookIndx,
-  } = useContext(UserContext);
+  const { activeSheetName, setActiveSheetName, setActiveBookIndx } =
+    useContext(UserContext);
 
   const { bookId } = useParams();
   const [sheetNames, setSheetNames] =
@@ -23,17 +18,6 @@ export default function Book() {
     fetchSheetNameAndSheet();
   }, [bookId]);
 
-  useEffect(() => {
-    if (!activeSheetName) return;
-    fetchSheetData(
-      activeSheetName,
-      0,
-      MAX_ROWS_PER_VIEW,
-      0,
-      MAX_COLUMNS_PER_VIEW,
-    );
-  }, [activeSheetName]);
-
   async function fetchSheetNameAndSheet() {
     let { data } = await fetcher<{ sheetNames: string; id: string }[]>(
       `/sheets/sheetNames/${bookId}`,
@@ -43,8 +27,6 @@ export default function Book() {
     if (!data || data.length === 0) {
       data = [{ sheetNames: "New Sheet", id: "" }];
     }
-
-    console.log(data);
 
     setSheetNames(data);
     setActiveSheetName(data[0]?.sheetNames ?? "New Sheet");

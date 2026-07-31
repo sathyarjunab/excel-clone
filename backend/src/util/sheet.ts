@@ -23,7 +23,7 @@ export function rangeCalculator(
   startCol: number,
   endCol: number,
 ): string[] {
-  //TODO: YET TO BE IMPLEMENTED
-
-  return [""];
+  const range1 = rangeGetter(startRow, startCol);
+  const range2 = rangeGetter(endRow, endCol);
+  return range1 === range2 ? [range1] : [range1, range2];
 }

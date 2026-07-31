@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { DB } from "../db/pool.js";
+import { THIRTY_DAYS } from "./fixedConstents.js";
 
 export async function userInjector(
   req: Request,
@@ -13,6 +14,7 @@ export async function userInjector(
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
+      maxAge: THIRTY_DAYS,
     });
     req.user = user;
     next();
