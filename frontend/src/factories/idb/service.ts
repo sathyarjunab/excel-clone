@@ -23,7 +23,6 @@ export class IDB implements Icache {
   //TODO: change the type from any -> valid one
   async saveChunk(chunk: Chunk) {
     const database = await this.db;
-    console.log(chunk);
     await database.put("chunks", chunk);
   }
 
