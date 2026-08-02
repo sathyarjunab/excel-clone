@@ -1,7 +1,6 @@
-import React, { CSSProperties, useContext } from "react";
+import React, { CSSProperties } from "react";
 import "./../scss/sheet.scss";
 import { SheetProps } from "./sheet";
-import { UserContext } from "../context";
 
 function child({
   handleDoubleClick,
@@ -18,8 +17,6 @@ function child({
   clickedCells: SheetProps | undefined;
   customStyle?: CSSProperties;
 }) {
-  const { loadingCells } = useContext(UserContext);
-
   return (
     <>
       {clickedCells?.currentClickedCell === coOrdinates ? (
@@ -30,8 +27,6 @@ function child({
           defaultValue={value ?? ""}
           onChange={handleDataEntry}
         />
-      ) : loadingCells ? (
-        <div>loading...</div>
       ) : (
         <div
           className="grid-cell"

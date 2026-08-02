@@ -284,14 +284,15 @@ export default function Sheet() {
   }, [version, clickedCells, scrollPosition]);
 
   return (
-    <div className="sheet-viewport" ref={viewportRef} onScroll={handleScroll}>
-      <div
-        className="sheet-body"
-        style={{
-          width: `${yAxisWidth + (rowsAndCol.cols - 1) * CELL_WIDTH}px`,
-          height: `${rowsAndCol.rows * CELL_HEIGHT}px`,
-        }}
-      >
+    <div className="sheet-shell">
+      <div className="sheet-viewport" ref={viewportRef} onScroll={handleScroll}>
+        <div
+          className="sheet-body"
+          style={{
+            width: `${yAxisWidth + (rowsAndCol.cols - 1) * CELL_WIDTH}px`,
+            height: `${rowsAndCol.rows * CELL_HEIGHT}px`,
+          }}
+        >
         {/* Column headers (A, B, C ...): pinned to the top on vertical
             scroll, but free to move horizontally so each letter tracks its
             column. */}
@@ -333,7 +334,19 @@ export default function Sheet() {
           }}
         />
         {cells?.visibleCells}
+        </div>
       </div>
+      {/* Fetch indicator: a single element pinned to the visible viewport
+          corner. It lives outside the cell array, so toggling it never
+          re-renders any cell — the spinner animates purely in CSS. */}
+      {loading && (
+        <div className="sheet-loading-indicator">
+          <span className="sheet-loading-dot" />
+          <span className="sheet-loading-dot" />
+          <span className="sheet-loading-dot" />
+          Loading
+        </div>
+      )}
     </div>
   );
 }

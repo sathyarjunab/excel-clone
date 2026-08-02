@@ -1,3 +1,14 @@
+// Non-scrolling shell around the viewport. It owns the flex sizing so the
+// viewport can still fill the space, and its `position: relative` gives the
+// loading pill an anchor that stays put while the grid scrolls underneath.
+.sheet-shell {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
 .sheet-viewport {
   width: 100%;
   flex: 1;
