@@ -1,9 +1,9 @@
 import { useContext, useEffect } from "react";
-import { toast } from "sonner";
-import { UserContext } from "../context";
-import { fetcher } from "../util/httpReq";
 import { useNavigate } from "react-router-dom";
-import { Workbook } from "../types/book";
+import { toast } from "sonner";
+import { DATASOURCE_TYPE } from "../constents";
+import { UserContext } from "../context";
+import { dataSource } from "../factories/registory/dataSource";
 
 export default function Home() {
   const { books, setBooks, setActiveBookIndx } = useContext(UserContext);
@@ -11,7 +11,7 @@ export default function Home() {
 
   useEffect(() => {
     async function getBooks() {
-      const resp = await fetcher<Workbook[]>("/book/books", "GET", true);
+      const resp = await (await dataSource[DATASOURCE_TYPE]()).getBooks();
       if (resp.ok) {
         setBooks(resp.data);
       } else {

@@ -1,34 +1,10 @@
-import { DBSchema, IDBPDatabase, openDB } from "idb";
-import { Sheet } from "../types/book";
-
-export interface ExcelDBSchema extends DBSchema {
-  chunks: {
-    key: string;
-    value: Chunk;
-    indexes: {
-      bookId: string;
-    };
-  };
-
-  range: {
-    key: string;
-    value: string;
-  };
-}
+import { IDBPDatabase, openDB } from "idb";
+import { Sheet } from "../../types/book";
+import { ExcelDBSchema, Icache } from "./interface";
 
 export type Chunk = { range: string; sheets: Sheet[] };
 
-export interface IIDB {
-  saveChunk(chunk: Chunk): Promise<void>;
-
-  getChunk(range: string): Promise<Chunk | undefined>;
-
-  removeChunk(range: string): Promise<void>;
-
-  clearChunks(): Promise<void>;
-}
-
-export class IDB implements IIDB {
+export class IDB implements Icache {
   private db: Promise<IDBPDatabase<ExcelDBSchema>>;
   private DATA_BASE_VERSION = 1;
 

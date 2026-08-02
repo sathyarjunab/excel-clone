@@ -65,6 +65,68 @@
   display: none;
 }
 
+.loading-cell {
+  justify-content: center;
+  align-items: center;
+  background-color: #f8fafc;
+  color: #64748b;
+}
+
+.loading-spinner,
+.grid-inline-loader {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #1e7145;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+.sheet-loading-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  color: #616174;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.sheet-loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #1e7145;
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+.sheet-loading-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.sheet-loading-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .axis-cell {
   // Positioned by the same absolute (left/top) coordinate model as the data
   // cells, so headers always align with their column/row.

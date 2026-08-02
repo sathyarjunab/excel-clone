@@ -7,7 +7,8 @@ import React, {
   useState,
 } from "react";
 import { clientSheet, Sheet, Workbook } from "./types/book";
-import { fetcher } from "./util/httpReq";
+import { DATASOURCE_TYPE } from "./constents";
+import { dataSource } from "./factories/registory/dataSource";
 
 export const UserContext = createContext<{
   user: null | Record<string, string>;
@@ -16,6 +17,7 @@ export const UserContext = createContext<{
   activeBookIndx: string | null;
   activeSheet: Sheet[] | null;
   version: number;
+  loadingCells: boolean;
   setActiveBookIndx: Dispatch<React.SetStateAction<string | null>>;
   setUser: Dispatch<React.SetStateAction<null>>;
   setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
@@ -24,6 +26,7 @@ export const UserContext = createContext<{
   saveSheets: () => void;
   latestSheetRef: React.MutableRefObject<clientSheet | null>;
   setVersion: Dispatch<React.SetStateAction<number>>;
+  setLoadingCells: Dispatch<React.SetStateAction<boolean>>;
 }>({
   user: null,
   books: null,
@@ -32,6 +35,7 @@ export const UserContext = createContext<{
   activeSheet: null,
   version: 0,
   latestSheetRef: { current: null },
+  loadingCells: false,
   setActiveBookIndx: () => {},
   setUser: () => {},
   setBooks: () => {},
@@ -39,6 +43,7 @@ export const UserContext = createContext<{
   saveSheets: () => {},
   setActiveSheet: () => {},
   setVersion: () => {},
+  setLoadingCells: () => {},
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
@@ -50,9 +55,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [activeBookIndx, setActiveBookIndx] = useState<string | null>(null);
   const latestSheetRef = useRef<clientSheet | null>(null);
   const [version, setVersion] = useState<number>(0);
+  const [loadingCells, setLoadingCells] = useState(false);
 
   const saveSheets = useCallback(async () => {
-    await fetcher("/sheets/save", "POST", true, undefined, {
+    (await dataSource[DATASOURCE_TYPE]()).saveSheets({
       dirtyCells: latestSheetRef.current?.dirtyCells,
       name: activeSheetName,
       bookId: activeBookIndx,
@@ -73,6 +79,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         activeSheet,
         version,
         latestSheetRef,
+        loadingCells,
         setUser,
         setBooks,
         setActiveSheetName,
@@ -80,6 +87,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setActiveBookIndx,
         setActiveSheet,
         setVersion,
+        setLoadingCells,
       }}
     >
       {children}

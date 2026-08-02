@@ -10,8 +10,8 @@ import { UserContext } from "../context";
 import "../scss/sheet.scss";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
-import { Gatherer } from "../services/cacheService";
-import { IDB } from "../util/idb";
+import { Gatherer } from "../factories/gatherer/service";
+import { CACHING_SERVICE_TYPE, DATASOURCE_TYPE } from "../constents";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -45,6 +45,7 @@ export default function Sheet() {
   });
   const [clickedCells, setClickedCells] = useState<SheetProps>();
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
+  const [loading, setLoading] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
   const timer = useRef<NodeJS.Timeout | null>(null);
@@ -86,19 +87,7 @@ export default function Sheet() {
       top: e.currentTarget.scrollTop,
       left: e.currentTarget.scrollLeft,
     });
-
-    const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
-    const endRow = Math.min(
-      rowsAndCol.rows,
-      startRow + Math.ceil(WINDOW_HEIGHT / CELL_HEIGHT),
-    );
-    const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
-    const endCol = Math.min(
-      rowsAndCol.cols,
-      startCol + Math.ceil(WINDOW_WIDTH / CELL_WIDTH),
-    );
-
-    handleFetchData({ endCol, endRow, startCol, startRow });
+    handleFetchData();
   };
 
   const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,29 +119,35 @@ export default function Sheet() {
     }, 2000);
   };
 
-  const handleFetchData = ({
-    endCol,
-    endRow,
-    startCol,
-    startRow,
-  }: {
-    startRow: number;
-    endRow: number;
-    startCol: number;
-    endCol: number;
-  }) => {
+  const handleFetchData = () => {
     if (timeOutRef) {
       clearTimeout(timeOutRef);
     }
+    const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
+    const endRow = Math.min(
+      rowsAndCol.rows,
+      startRow + Math.ceil(WINDOW_HEIGHT / CELL_HEIGHT),
+    );
+    const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
+    const endCol = Math.min(
+      rowsAndCol.cols,
+      startCol + Math.ceil(WINDOW_WIDTH / CELL_WIDTH),
+    );
     setTimeOutRef(
       setTimeout(async () => {
-        const gatherer = new Gatherer(activeSheetName ?? "", new IDB());
-        const data = await gatherer.getData({
+        setLoading(true);
+        const gatherer = new Gatherer(
+          activeSheetName ?? "",
+          CACHING_SERVICE_TYPE,
+          DATASOURCE_TYPE,
+        );
+        const data = await gatherer.getCellData({
           endCol,
           endRow,
           startCol,
           topRow: startRow,
         });
+        setLoading(false);
 
         let cellData = {};
         data?.forEach((sheet) => {
@@ -168,9 +163,13 @@ export default function Sheet() {
         };
 
         setVersion((prev) => 1 + prev);
-      }, 100),
+      }, 1000),
     );
   };
+
+  useEffect(() => {
+    handleFetchData();
+  }, []);
 
   useEffect(() => {
     // Calculate visible range
@@ -194,8 +193,6 @@ export default function Sheet() {
       rowsAndCol.cols,
       startCol + Math.ceil(WINDOW_WIDTH / CELL_WIDTH),
     );
-
-    // handleFetchData({ endCol, endRow, startCol, startRow });
 
     if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
       setRowsAndCol((prev) => {
