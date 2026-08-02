@@ -1,4 +1,4 @@
-import { Sheet } from "../../types/book";
+import { Grid, Sheet } from "../../types/book";
 
 export interface IGatherer {
   sheetName: string;
@@ -14,4 +14,11 @@ export interface IGatherer {
     startCol: number;
     endCol: number;
   }): Promise<Sheet[] | null>;
+
+  updateCellInCache(
+    row: number,
+    col: number,
+    cellKey: `${string}-${string}`,
+    grid: Grid,
+  ): Promise<void>;
 }

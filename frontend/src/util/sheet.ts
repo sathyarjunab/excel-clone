@@ -1,4 +1,4 @@
-import { ALPHABETS, X_MAX_RANGE } from "../constents";
+import { ALPHABETS, X_MAX_RANGE, Y_MAX_RANGE } from "../constents";
 
 export function numberToAlphabet(num: number, result: string): string {
   if (!num || num <= 0) return "";
@@ -8,7 +8,9 @@ export function numberToAlphabet(num: number, result: string): string {
   return (result += res + ALPHABETS[rem]);
 }
 export function rangeConvertor(row: number, col: number): string {
-  const rowRange = Math.max(Math.ceil(row / X_MAX_RANGE), 1) * 500;
-  const colRange = Math.max(Math.ceil(col / X_MAX_RANGE), 1) * 500;
+  // Snap the cell to the top-left corner of its chunk. Rows use the row range
+  // and cols use the col range so the two can diverge without corrupting keys.
+  const rowRange = Math.max(Math.ceil(row / X_MAX_RANGE), 1) * X_MAX_RANGE;
+  const colRange = Math.max(Math.ceil(col / Y_MAX_RANGE), 1) * Y_MAX_RANGE;
   return `${rowRange}-${colRange}`;
 }

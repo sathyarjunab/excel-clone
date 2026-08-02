@@ -1,8 +1,11 @@
 import {
   CSSProperties,
+  ReactElement,
   UIEvent,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -12,6 +15,7 @@ import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
 import { Gatherer } from "../factories/gatherer/service";
 import { CACHING_SERVICE_TYPE, DATASOURCE_TYPE } from "../constents";
+import { clientSheet } from "../types/book";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -23,9 +27,15 @@ const CELL_WIDTH = 64;
 const CELL_HEIGHT = 20;
 const Y_AXIS_WIDTH = 40;
 
-// Use a fallback dimension if window is not available (SSR)
-const WINDOW_HEIGHT = typeof window !== "undefined" ? window.innerHeight : 1000;
-const WINDOW_WIDTH = typeof window !== "undefined" ? window.innerWidth : 1000;
+// How long the grid waits after the last scroll before it fetches the newly
+// visible range. Short enough to feel instant, long enough to skip the
+// intermediate frames of a fast scroll.
+const FETCH_DEBOUNCE_MS = 200;
+const SAVE_DEBOUNCE_MS = 2000;
+
+// Fallback viewport size before the ResizeObserver has measured the element.
+const FALLBACK_HEIGHT = typeof window !== "undefined" ? window.innerHeight : 1000;
+const FALLBACK_WIDTH = typeof window !== "undefined" ? window.innerWidth : 1000;
 
 const getYAxisWidth = (rowCount: number) => {
   const digits = Math.max(1, rowCount.toString().length);
@@ -33,7 +43,7 @@ const getYAxisWidth = (rowCount: number) => {
 };
 
 export default function Sheet() {
-  const { saveSheets, latestSheetRef, version, setVersion, activeSheetName } =
+  const { saveSheets, sheetData, setSheetData, activeSheetName } =
     useContext(UserContext);
 
   const [rowsAndCol, setRowsAndCol] = useState<{
@@ -46,96 +56,88 @@ export default function Sheet() {
   const [clickedCells, setClickedCells] = useState<SheetProps>();
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
   const [loading, setLoading] = useState(false);
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
-  const timer = useRef<NodeJS.Timeout | null>(null);
-  const [cells, setCells] = useState<{
-    visibleXAxisCells?: any[];
-    visibleYAxisCells?: any[];
-    visibleCells?: any[];
-  }>();
-  const [timeOutRef, setTimeOutRef] = useState<NodeJS.Timeout>();
-
-  const [xAxisStyle] = useState<CSSProperties>({
-    backgroundColor: "#F3F3F3",
-    justifyContent: "center",
-    color: "#616174",
-    zIndex: 2,
+  // #5: the visible viewport size is measured, not frozen at module load, so
+  // the grid recalculates its visible range when the window resizes.
+  const [viewportSize, setViewportSize] = useState({
+    height: FALLBACK_HEIGHT,
+    width: FALLBACK_WIDTH,
   });
-  const yAxisStyle: CSSProperties = {
-    backgroundColor: "#F3F3F3",
-    width: `${yAxisWidth}px`,
-    justifyContent: "end",
-    color: "#616174",
-    zIndex: 2,
-    paddingRight: 6,
-    textAlign: "right",
-  };
 
-  const handleDoubleClick = (x: number, y: number) => {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  // #4: two independent debounces, each in a ref so they survive re-renders
+  // without being state (a timer in state re-renders on every scroll).
+  const fetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
+
+  const xAxisStyle = useMemo<CSSProperties>(
+    () => ({
+      backgroundColor: "#F3F3F3",
+      justifyContent: "center",
+      color: "#616174",
+      zIndex: 2,
+    }),
+    [],
+  );
+  const yAxisStyle = useMemo<CSSProperties>(
+    () => ({
+      backgroundColor: "#F3F3F3",
+      width: `${yAxisWidth}px`,
+      justifyContent: "end",
+      color: "#616174",
+      zIndex: 2,
+      paddingRight: 6,
+      textAlign: "right",
+    }),
+    [yAxisWidth],
+  );
+
+  // #5: keep viewportSize in sync with the actual element.
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const measure = () =>
+      setViewportSize({ height: el.clientHeight, width: el.clientWidth });
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleDoubleClick = useCallback((x: number, y: number) => {
     if (x === 0 || y === 0) return;
-    setClickedCells((prev) => {
-      return {
-        prevClickedCell: prev?.currentClickedCell,
-        currentClickedCell: `${x.toString()}-${y.toString()}`,
-      };
-    });
-  };
+    setClickedCells((prev) => ({
+      prevClickedCell: prev?.currentClickedCell,
+      currentClickedCell: `${x}-${y}`,
+    }));
+  }, []);
 
-  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
-    setScrollPosition({
-      top: e.currentTarget.scrollTop,
-      left: e.currentTarget.scrollLeft,
-    });
-    handleFetchData();
-  };
+  const handleFetchData = useCallback(() => {
+    if (fetchTimer.current) clearTimeout(fetchTimer.current);
 
-  const handleDataEntry = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (timer.current) {
-      clearTimeout(timer.current);
-    }
-    const content = e.target.value;
-    const currentClickedCell = clickedCells?.currentClickedCell;
+    fetchTimer.current = setTimeout(async () => {
+      // Read the scroll offset from the DOM at fire time so the fetch always
+      // targets the region the user actually landed on (no stale closure).
+      const el = viewportRef.current;
+      const top = el ? el.scrollTop : scrollPosition.top;
+      const left = el ? el.scrollLeft : scrollPosition.left;
 
-    // here we need to add the value to the dirty cells and the active sheet
-    const prev = latestSheetRef.current;
+      const startRow = Math.max(0, Math.ceil(top / CELL_HEIGHT));
+      const endRow = Math.min(
+        rowsAndCol.rows,
+        startRow + Math.ceil(viewportSize.height / CELL_HEIGHT),
+      );
+      const startCol = Math.max(0, Math.ceil(left / CELL_WIDTH));
+      const endCol = Math.min(
+        rowsAndCol.cols,
+        startCol + Math.ceil(viewportSize.width / CELL_WIDTH),
+      );
 
-    latestSheetRef.current = {
-      ...prev,
-      cellData: {
-        ...prev?.cellData,
-        [`${currentClickedCell}`]: { style: {}, content },
-      },
-      dirtyCells: {
-        ...prev?.dirtyCells,
-        [`${currentClickedCell}`]: { style: {}, content },
-      },
-    };
-
-    setVersion((prev) => prev + 1);
-
-    timer.current = setTimeout(() => {
-      saveSheets();
-    }, 2000);
-  };
-
-  const handleFetchData = () => {
-    if (timeOutRef) {
-      clearTimeout(timeOutRef);
-    }
-    const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
-    const endRow = Math.min(
-      rowsAndCol.rows,
-      startRow + Math.ceil(WINDOW_HEIGHT / CELL_HEIGHT),
-    );
-    const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
-    const endCol = Math.min(
-      rowsAndCol.cols,
-      startCol + Math.ceil(WINDOW_WIDTH / CELL_WIDTH),
-    );
-    setTimeOutRef(
-      setTimeout(async () => {
-        setLoading(true);
+      setLoading(true);
+      try {
         const gatherer = new Gatherer(
           activeSheetName ?? "",
           CACHING_SERVICE_TYPE,
@@ -147,78 +149,125 @@ export default function Sheet() {
           startCol,
           topRow: startRow,
         });
-        setLoading(false);
 
-        let cellData = {};
+        let fetched: clientSheet["cellData"] = {};
         data?.forEach((sheet) => {
-          cellData = {
-            ...cellData,
-            ...sheet.data,
-          };
+          fetched = { ...fetched, ...sheet.data };
         });
 
-        latestSheetRef.current = {
-          cellData,
-          dirtyCells: latestSheetRef.current?.dirtyCells ?? {},
-        };
+        // Layer unsaved local edits on top of the fetched server data so a
+        // background refetch never wipes out something the user just typed.
+        setSheetData((prev) => ({
+          cellData: { ...fetched, ...prev.dirtyCells },
+          dirtyCells: prev.dirtyCells,
+        }));
+      } finally {
+        setLoading(false);
+      }
+    }, FETCH_DEBOUNCE_MS);
+  }, [rowsAndCol, viewportSize, activeSheetName, setSheetData, scrollPosition]);
 
-        setVersion((prev) => 1 + prev);
-      }, 1000),
-    );
+  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+    setScrollPosition({
+      top: e.currentTarget.scrollTop,
+      left: e.currentTarget.scrollLeft,
+    });
+    handleFetchData();
   };
 
+  const handleDataEntry = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const content = e.target.value;
+      const currentClickedCell = clickedCells?.currentClickedCell;
+      if (!currentClickedCell) return;
+
+      const grid = { style: {}, content };
+
+      // #2: cell data is real state, so the edit re-renders the grid normally.
+      setSheetData((prev) => ({
+        cellData: { ...prev.cellData, [currentClickedCell]: grid },
+        dirtyCells: { ...prev.dirtyCells, [currentClickedCell]: grid },
+      }));
+
+      // #3: write through to the IDB chunk so scrolling away and back shows the
+      // edit instead of the stale value cached on the first fetch.
+      const [rowStr, colStr] = currentClickedCell.split("-");
+      const gatherer = new Gatherer(
+        activeSheetName ?? "",
+        CACHING_SERVICE_TYPE,
+        DATASOURCE_TYPE,
+      );
+      void gatherer.updateCellInCache(
+        Number(rowStr),
+        Number(colStr),
+        currentClickedCell,
+        grid,
+      );
+
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveSheets(), SAVE_DEBOUNCE_MS);
+    },
+    [clickedCells, activeSheetName, saveSheets, setSheetData],
+  );
+
+  // Fetch on first mount and whenever the active sheet changes.
   useEffect(() => {
     handleFetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSheetName]);
+
+  // Clear pending timers on unmount.
+  useEffect(() => {
+    return () => {
+      if (fetchTimer.current) clearTimeout(fetchTimer.current);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, []);
 
-  useEffect(() => {
-    // Calculate visible range
+  const visibleRange = useMemo(() => {
     const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
     const endRow = Math.min(
       rowsAndCol.rows,
-      startRow + Math.ceil(WINDOW_HEIGHT / CELL_HEIGHT),
+      startRow + Math.ceil(viewportSize.height / CELL_HEIGHT),
     );
-
-    if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
-      setRowsAndCol((prev) => {
-        return {
-          ...prev,
-          rows: prev.rows + 1000,
-        };
-      });
-    }
-
     const startCol = Math.max(0, Math.ceil(scrollPosition.left / CELL_WIDTH));
     const endCol = Math.min(
       rowsAndCol.cols,
-      startCol + Math.ceil(WINDOW_WIDTH / CELL_WIDTH),
+      startCol + Math.ceil(viewportSize.width / CELL_WIDTH),
     );
+    return { startRow, endRow, startCol, endCol };
+  }, [scrollPosition, rowsAndCol, viewportSize]);
 
-    if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
-      setRowsAndCol((prev) => {
-        return {
-          ...prev,
-          cols: prev.cols + 1000,
-        };
-      });
+  // Grow the sheet as the user approaches the current edge. Kept as its own
+  // effect because it is a side effect and must not live inside the render memo.
+  useEffect(() => {
+    const { endRow, endCol } = visibleRange;
+    if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
+      setRowsAndCol((prev) => ({ ...prev, rows: prev.rows + 1000 }));
     }
-    const visibleCells: any = [];
+    if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
+      setRowsAndCol((prev) => ({ ...prev, cols: prev.cols + 1000 }));
+    }
+  }, [visibleRange, rowsAndCol]);
+
+  // #1: the visible cells are DERIVED render output, computed with useMemo
+  // during render — never stored in state and rebuilt from an effect.
+  const cells = useMemo(() => {
+    const { startRow, endRow, startCol, endCol } = visibleRange;
+
+    const visibleCells: ReactElement[] = [];
     for (let x = startRow; x < endRow; x++) {
       for (let y = startCol; y < endCol; y++) {
         if (x === 0 || y === 0) continue;
 
-        let val: string | null = null;
         const top = x * CELL_HEIGHT;
         const left = yAxisWidth + (y - 1) * CELL_WIDTH;
-
         const customStyle: CSSProperties = {
           top: `${top}px`,
           left: `${left}px`,
         };
 
-        if (!val) {
-          val = latestSheetRef.current?.cellData[`${x}-${y}`]?.content ?? null;
-        }
+        const val = sheetData.cellData[`${x}-${y}`]?.content ?? null;
 
         visibleCells.push(
           <Grid
@@ -234,11 +283,11 @@ export default function Sheet() {
       }
     }
 
-    const xAxisCells: any = [];
+    const visibleXAxisCells: ReactElement[] = [];
     for (let y = startCol; y < endCol; y++) {
       if (y === 0) continue;
 
-      xAxisCells.push(
+      visibleXAxisCells.push(
         <div
           key={`x-${y}`}
           className="grid-cell axis-cell"
@@ -255,11 +304,11 @@ export default function Sheet() {
       );
     }
 
-    const yAxisCells: any = [];
+    const visibleYAxisCells: ReactElement[] = [];
     for (let x = startRow; x < endRow; x++) {
       if (x === 0) continue;
 
-      yAxisCells.push(
+      visibleYAxisCells.push(
         <div
           key={`y-${x}`}
           className="grid-cell axis-cell"
@@ -276,12 +325,17 @@ export default function Sheet() {
       );
     }
 
-    setCells({
-      visibleCells: visibleCells,
-      visibleYAxisCells: yAxisCells,
-      visibleXAxisCells: xAxisCells,
-    });
-  }, [version, clickedCells, scrollPosition]);
+    return { visibleCells, visibleXAxisCells, visibleYAxisCells };
+  }, [
+    visibleRange,
+    sheetData,
+    clickedCells,
+    yAxisWidth,
+    xAxisStyle,
+    yAxisStyle,
+    handleDataEntry,
+    handleDoubleClick,
+  ]);
 
   return (
     <div className="sheet-shell">
@@ -293,47 +347,47 @@ export default function Sheet() {
             height: `${rowsAndCol.rows * CELL_HEIGHT}px`,
           }}
         >
-        {/* Column headers (A, B, C ...): pinned to the top on vertical
-            scroll, but free to move horizontally so each letter tracks its
-            column. */}
-        <div
-          className="sheet-axis sheet-x-axis"
-          style={{
-            width: `${yAxisWidth + (rowsAndCol.cols - 1) * CELL_WIDTH}px`,
-            height: `${CELL_HEIGHT}px`,
-            transform: `translateY(${scrollPosition.top}px)`,
-          }}
-        >
-          {cells?.visibleXAxisCells}
-        </div>
-        {/* Row headers (1, 2, 3 ...): pinned to the left on horizontal
-            scroll, but free to move vertically so each number tracks its
-            row. */}
-        <div
-          className="sheet-axis sheet-y-axis"
-          style={{
-            width: `${yAxisWidth}px`,
-            height: `${rowsAndCol.rows * CELL_HEIGHT}px`,
-            transform: `translateX(${scrollPosition.left}px)`,
-          }}
-        >
-          {cells?.visibleYAxisCells}
-        </div>
-        {/* Top-left corner: pinned in both directions. */}
-        <div
-          className="sheet-corner grid-cell"
-          style={{
-            ...xAxisStyle,
-            ...yAxisStyle,
-            left: 0,
-            top: 0,
-            width: `${yAxisWidth}px`,
-            height: `${CELL_HEIGHT}px`,
-            zIndex: 4,
-            transform: `translate(${scrollPosition.left}px, ${scrollPosition.top}px)`,
-          }}
-        />
-        {cells?.visibleCells}
+          {/* Column headers (A, B, C ...): pinned to the top on vertical
+              scroll, but free to move horizontally so each letter tracks its
+              column. */}
+          <div
+            className="sheet-axis sheet-x-axis"
+            style={{
+              width: `${yAxisWidth + (rowsAndCol.cols - 1) * CELL_WIDTH}px`,
+              height: `${CELL_HEIGHT}px`,
+              transform: `translateY(${scrollPosition.top}px)`,
+            }}
+          >
+            {cells.visibleXAxisCells}
+          </div>
+          {/* Row headers (1, 2, 3 ...): pinned to the left on horizontal
+              scroll, but free to move vertically so each number tracks its
+              row. */}
+          <div
+            className="sheet-axis sheet-y-axis"
+            style={{
+              width: `${yAxisWidth}px`,
+              height: `${rowsAndCol.rows * CELL_HEIGHT}px`,
+              transform: `translateX(${scrollPosition.left}px)`,
+            }}
+          >
+            {cells.visibleYAxisCells}
+          </div>
+          {/* Top-left corner: pinned in both directions. */}
+          <div
+            className="sheet-corner grid-cell"
+            style={{
+              ...xAxisStyle,
+              ...yAxisStyle,
+              left: 0,
+              top: 0,
+              width: `${yAxisWidth}px`,
+              height: `${CELL_HEIGHT}px`,
+              zIndex: 4,
+              transform: `translate(${scrollPosition.left}px, ${scrollPosition.top}px)`,
+            }}
+          />
+          {cells.visibleCells}
         </div>
       </div>
       {/* Fetch indicator: a single element pinned to the visible viewport

@@ -1,13 +1,8 @@
-import { JsonObject } from "@prisma/client/runtime/client";
 import { Request, Response, Router } from "express";
 import Joi from "joi";
-import { DB } from "../db/pool.js";
-import { Prisma } from "../generated/prisma/client.js";
-import {
-  rangeCalculator,
-  rangeGetter,
-  rowsColConvertor,
-} from "../util/sheet.js";
+import { REPOSITORY_TYPE } from "../constents.js";
+import { sheetRepository } from "../factories/registory/repository.js";
+import { SheetService } from "../services/sheet/service.js";
 import {
   sheetGetterSchema,
   sheetSchema,
@@ -15,9 +10,14 @@ import {
 
 export const sheetsRouter = Router();
 
-// Create a new sheet
+// Compose the service at the route boundary: the registry (factory) hands back
+// a repository implementation, which the service depends on via its interface.
+const getSheetService = async () =>
+  new SheetService(await sheetRepository[REPOSITORY_TYPE]());
+
+// Persist the client's dirty cells.
 sheetsRouter.post("/save", async (req: Request, res: Response) => {
-  const sheetsMetaData = await sheetSchema.validateAsync(req.body, {
+  const meta = await sheetSchema.validateAsync(req.body, {
     stripUnknown: true,
   });
 
@@ -26,132 +26,38 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
     return;
   }
 
-  // Get all the sheets from the db
-  const sheets = await DB.sheet.findMany({
-    where: {
-      userId: req.user.id,
-      bookId: sheetsMetaData.bookId,
-    },
+  const service = await getSheetService();
+  await service.save(req.user.id, {
+    bookId: meta.bookId,
+    name: meta.name,
+    dirtyCells: meta.dirtyCells,
   });
 
-  const promiseGroup = [];
-
-  const rangeToSheet: Map<string, Prisma.sheetUncheckedCreateInput> = new Map();
-
-  for (const [coOrd, grid] of Object.entries(sheetsMetaData.dirtyCells)) {
-    // convert string-string to numbers for all the dirty cells.
-    const [rows, col] = rowsColConvertor(coOrd);
-
-    // check if the db as the row for this range
-    const existingRow = sheets.find((sheet) => {
-      const [r, c] = rowsColConvertor(sheet.range);
-      if (rows <= r && col <= c) {
-        return true;
-      }
-      return false;
-    });
-
-    if (!existingRow) {
-      // If the row is not there then we create a new row then.
-      const range = rangeGetter(rows, col);
-
-      if (rangeToSheet.has(range)) {
-        const existingRow = rangeToSheet.get(
-          range,
-        ) as Prisma.sheetUncheckedCreateInput;
-        rangeToSheet.set(range, {
-          ...existingRow,
-          data: {
-            ...(existingRow!.data as JsonObject),
-            [coOrd]: grid,
-          },
-        });
-      }
-
-      rangeToSheet.set(range, {
-        data: {
-          [coOrd]: grid,
-        },
-        range: range,
-        sheetName: sheetsMetaData.name,
-        userId: req.user.id,
-        chunksCount: sheets.length + 1,
-        bookId: sheetsMetaData.bookId,
-      });
-    } else {
-      // If it is there then we update the existing row with the data
-      promiseGroup.push(
-        DB.sheet.update({
-          where: {
-            id: existingRow.id,
-          },
-          data: {
-            data: { ...(existingRow.data as JsonObject), [coOrd]: grid },
-          },
-        }),
-      );
-    }
-  }
-
-  for (const [_range, sheetBody] of rangeToSheet) {
-    promiseGroup.push(
-      DB.sheet.create({
-        data: sheetBody,
-      }),
-    );
-  }
-
-  await Promise.allSettled(promiseGroup);
-
-  res.status(200).send({ message: "chages saved" });
+  res.status(200).send({ message: "changes saved" });
 });
 
-//fetches all the sheets of a book
+// Distinct sheet names for a book.
 sheetsRouter.get("/sheetNames/:bookId", async (req, res) => {
   const bookId = await Joi.string().required().validateAsync(req.params.bookId);
+
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-  const sheets = await DB.sheet.findMany({
-    where: {
-      bookId,
-      userId,
-    },
-    distinct: "sheetName",
-    select: {
-      sheetName: true,
-      id: true,
-    },
-  });
-
-  const sheetNames = sheets.map((s) => ({ sheetNames: s.sheetName, id: s.id }));
+  const service = await getSheetService();
+  const sheetNames = await service.getSheetNames(userId, bookId);
 
   res.status(200).send(sheetNames);
 });
 
-// fetch the sheet's data by id
+// Cell data for a visible range.
 sheetsRouter.get("/sheet", async (req, res) => {
   const sheetInfo = await sheetGetterSchema.validateAsync(req.query);
 
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-  const coOrdinatesToQuery = rangeCalculator(
-    sheetInfo.startRow,
-    sheetInfo.endRow,
-    sheetInfo.startCol,
-    sheetInfo.endCol,
-  );
-
-  const sheets = await DB.sheet.findMany({
-    where: {
-      userId,
-      sheetName: sheetInfo.sheetName,
-      range: {
-        in: coOrdinatesToQuery,
-      },
-    },
-  });
+  const service = await getSheetService();
+  const sheets = await service.getRange(userId, sheetInfo);
 
   res.status(200).send(sheets);
 });

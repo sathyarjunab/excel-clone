@@ -1,16 +1,22 @@
 import { NextFunction, Request, Response } from "express";
-import { DB } from "../db/pool.js";
+import { REPOSITORY_TYPE } from "../constents.js";
+import { userRepository } from "../factories/registory/repository.js";
+import { UserService } from "../services/user/service.js";
 import { THIRTY_DAYS } from "./fixedConstents.js";
 
+// Thin adapter: translate the cookie into a req.user, delegating all token
+// logic to UserService (which is built from the repository registry/factory).
 export async function userInjector(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
+  const service = new UserService(await userRepository[REPOSITORY_TYPE]());
   const token = req.cookies?.token;
+
   if (!token) {
-    const { token, user } = await createUser();
-    res.cookie("token", token, {
+    const { token: freshToken, user } = await service.createWithToken();
+    res.cookie("token", freshToken, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -21,19 +27,7 @@ export async function userInjector(
     return;
   }
 
-  const hashedBuffer = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(token),
-  );
-
-  const hashedToken = Array.from(new Uint8Array(hashedBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  const user = await DB.user.findUnique({
-    where: { token: hashedToken },
-  });
-
+  const user = await service.findByRawToken(token);
   if (!user) {
     res.status(401).json({ error: "Unauthorized" });
     return;
@@ -41,29 +35,4 @@ export async function userInjector(
 
   req.user = user;
   next();
-}
-
-export async function createUser() {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-
-  const token = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  const hashedBuffer = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(token),
-  );
-
-  const hashedToken = Array.from(new Uint8Array(hashedBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  const user = await DB.user.create({
-    data: {
-      name: "test",
-      token: hashedToken,
-    },
-  });
-  return { token, user };
 }

@@ -1,29 +1,20 @@
 import { Router } from "express";
-import { DB } from "../db/pool.js";
 import Joi from "joi";
+import { REPOSITORY_TYPE } from "../constents.js";
+import { bookRepository } from "../factories/registory/repository.js";
+import { BookService } from "../services/book/service.js";
 
 const bookRouter = Router();
+
+const getBookService = async () =>
+  new BookService(await bookRepository[REPOSITORY_TYPE]());
 
 bookRouter.get("/books", async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-  let books = await DB.book.findMany({
-    where: {
-      userId,
-    },
-  });
-
-  if (books.length === 0) {
-    books.push(
-      await DB.book.create({
-        data: {
-          bookName: "SheetName1",
-          userId: userId,
-        },
-      }),
-    );
-  }
+  const service = await getBookService();
+  const books = await service.listForUser(userId);
 
   res.status(200).send(books);
 });
@@ -34,12 +25,9 @@ bookRouter.post("/book", async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-  const createdBook = await DB.book.create({
-    data: {
-      bookName,
-      userId,
-    },
-  });
+  const service = await getBookService();
+  const createdBook = await service.create(userId, bookName);
+
   res.status(200).send(createdBook);
 });
 

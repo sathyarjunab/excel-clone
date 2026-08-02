@@ -1,3 +1,4 @@
+import { Grid } from "../../types/book";
 import { rangeConvertor } from "../../util/sheet";
 import { cacheSource, CacheSourceType } from "../registory/cache";
 import { dataSource, DataSourceType } from "../registory/dataSource";
@@ -54,5 +55,26 @@ export class Gatherer implements IGatherer {
         sheets: freshData,
       });
     return freshData;
+  }
+
+  // Write-through: when a cell is edited we patch the cached chunk in place so a
+  // later scroll back to this region serves the edited value instead of the
+  // stale copy that was cached on the first fetch.
+  public async updateCellInCache(
+    row: number,
+    col: number,
+    cellKey: `${string}-${string}`,
+    grid: Grid,
+  ): Promise<void> {
+    const range = rangeConvertor(row, col);
+    const cacheSourceInstance = await cacheSource[this.cachingServiceType]();
+    const chunk = await cacheSourceInstance.getChunk(range);
+    if (!chunk) return;
+
+    const sheet = chunk.sheets.find((s) => s.sheetName === this.sheetName);
+    if (!sheet) return;
+
+    sheet.data = { ...sheet.data, [cellKey]: grid };
+    await cacheSourceInstance.saveChunk(chunk);
   }
 }

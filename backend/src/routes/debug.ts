@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { DB } from "../db/pool.js";
 
 const debugRoute = Router();
 
