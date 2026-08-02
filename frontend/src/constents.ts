@@ -7,6 +7,35 @@ const MAX_ROWS_PER_VIEW = 50;
 const MAX_COLUMNS_PER_VIEW = 50;
 const DATASOURCE_TYPE = DataSourceType.API;
 const CACHING_SERVICE_TYPE = CacheSourceType.IDB;
+const ALPHABETS = [
+  "",
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+  "M",
+  "N",
+  "O",
+  "P",
+  "Q",
+  "R",
+  "S",
+  "T",
+  "U",
+  "V",
+  "W",
+  "X",
+  "Y",
+  "Z",
+];
 
 export {
   X_MAX_RANGE,
@@ -15,4 +44,5 @@ export {
   MAX_COLUMNS_PER_VIEW,
   DATASOURCE_TYPE,
   CACHING_SERVICE_TYPE,
+  ALPHABETS,
 };
