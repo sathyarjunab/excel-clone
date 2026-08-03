@@ -4,7 +4,7 @@ import { Sheet } from "../../types/book";
 export interface ExcelDBSchema extends DBSchema {
   chunks: {
     key: string;
-    value: Sheet;
+    value: Sheet & { timestamp: Date };
     indexes: {
       bookId: string;
     };
