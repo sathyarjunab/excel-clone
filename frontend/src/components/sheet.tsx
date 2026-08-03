@@ -14,8 +14,9 @@ import "../scss/sheet.scss";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
 import { Gatherer } from "../factories/gatherer/service";
-import { CACHING_SERVICE_TYPE, DATASOURCE_TYPE } from "../constents";
+import { DEFAULT_CLIENT_DB_SERVICE_TYPE, DATASOURCE_TYPE } from "../constents";
 import { clientSheet } from "../types/book";
+import { clientDbSource } from "../factories/registory/clientDb";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -34,13 +35,17 @@ const FETCH_DEBOUNCE_MS = 200;
 const SAVE_DEBOUNCE_MS = 2000;
 
 // Fallback viewport size before the ResizeObserver has measured the element.
-const FALLBACK_HEIGHT = typeof window !== "undefined" ? window.innerHeight : 1000;
+const FALLBACK_HEIGHT =
+  typeof window !== "undefined" ? window.innerHeight : 1000;
 const FALLBACK_WIDTH = typeof window !== "undefined" ? window.innerWidth : 1000;
 
 const getYAxisWidth = (rowCount: number) => {
   const digits = Math.max(1, rowCount.toString().length);
   return Math.max(Y_AXIS_WIDTH, 16 + digits * 8);
 };
+
+const clientDbInstancePromise =
+  clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
 
 export default function Sheet() {
   const { saveSheets, sheetData, setSheetData, activeSheetName } =
@@ -140,7 +145,7 @@ export default function Sheet() {
       try {
         const gatherer = new Gatherer(
           activeSheetName ?? "",
-          CACHING_SERVICE_TYPE,
+          DEFAULT_CLIENT_DB_SERVICE_TYPE,
           DATASOURCE_TYPE,
         );
         const data = await gatherer.getCellData({
@@ -184,17 +189,27 @@ export default function Sheet() {
       const grid = { style: {}, content };
 
       // #2: cell data is real state, so the edit re-renders the grid normally.
-      setSheetData((prev) => ({
-        cellData: { ...prev.cellData, [currentClickedCell]: grid },
-        dirtyCells: { ...prev.dirtyCells, [currentClickedCell]: grid },
-      }));
+      setSheetData((prev) => {
+        // #3: add the dirty cell to the IDB so that if the user refreshes the page as soon as he enters the details it persist in db
+        clientDbInstancePromise.then(async (clientDbInstance) => {
+          await clientDbInstance.saveDirtyCell({
+            ...prev.dirtyCells,
+            [currentClickedCell]: grid,
+          });
+        });
 
-      // #3: write through to the IDB chunk so scrolling away and back shows the
+        return {
+          cellData: { ...prev.cellData, [currentClickedCell]: grid },
+          dirtyCells: { ...prev.dirtyCells, [currentClickedCell]: grid },
+        };
+      });
+
+      // #4: write through to the IDB chunk so scrolling away and back shows the
       // edit instead of the stale value cached on the first fetch.
       const [rowStr, colStr] = currentClickedCell.split("-");
       const gatherer = new Gatherer(
         activeSheetName ?? "",
-        CACHING_SERVICE_TYPE,
+        DEFAULT_CLIENT_DB_SERVICE_TYPE,
         DATASOURCE_TYPE,
       );
       void gatherer.updateCellInCache(

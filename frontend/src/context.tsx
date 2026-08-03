@@ -3,14 +3,13 @@ import React, {
   Dispatch,
   ReactNode,
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
-import { clientSheet, Sheet, Workbook } from "./types/book";
-import { DATASOURCE_TYPE } from "./constents";
+import { DATASOURCE_TYPE, DEFAULT_CLIENT_DB_SERVICE_TYPE } from "./constents";
+import { clientDbSource } from "./factories/registory/clientDb";
 import { dataSource } from "./factories/registory/dataSource";
+import { clientSheet, Sheet, Workbook } from "./types/book";
 
 const EMPTY_SHEET: clientSheet = { cellData: {}, dirtyCells: {} };
 
@@ -44,6 +43,9 @@ export const UserContext = createContext<{
   setSheetData: () => {},
 });
 
+const clientDbInstancePromise =
+  clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
+
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState(null);
   const [books, setBooks] = useState<Workbook[] | null>(null);
@@ -56,24 +58,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // normal way, so there is no more `ref + version++` counter to force paints.
   const [sheetData, setSheetData] = useState<clientSheet>(EMPTY_SHEET);
 
-  // A "latest value" ref mirroring the state. The debounced save fires long
-  // after the keystroke that scheduled it, so it must read the newest dirty
-  // cells rather than the ones captured in its closure.
-  const sheetDataRef = useRef(sheetData);
-  useEffect(() => {
-    sheetDataRef.current = sheetData;
-  }, [sheetData]);
-
   const saveSheets = useCallback(async () => {
-    const dirtyCells = sheetDataRef.current.dirtyCells;
+    const dirtyCells = await (await clientDbInstancePromise).getDirtyCells();
 
-    await (await dataSource[DATASOURCE_TYPE]()).saveSheets({
+    await (
+      await dataSource[DATASOURCE_TYPE]()
+    ).saveSheets({
       dirtyCells,
       name: activeSheetName,
       bookId: activeBookIndx,
     });
 
     setSheetData((prev) => ({ ...prev, dirtyCells: {} }));
+    clientDbInstancePromise.then(async (clientDbInstance) => {
+      await clientDbInstance.saveDirtyCell({});
+    });
   }, [activeBookIndx, activeSheetName]);
 
   const value = useMemo(

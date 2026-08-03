@@ -1,18 +1,18 @@
 import { DBSchema } from "idb";
-import { Sheet } from "../../types/book";
+import { Grid, Sheet } from "../../types/book";
 
 export interface ExcelDBSchema extends DBSchema {
   chunks: {
     key: string;
     value: Sheet & { timestamp: Date };
     indexes: {
-      bookId: string;
+      bookId_index: string;
     };
   };
 
-  range: {
-    key: string;
-    value: string;
+  appStore: {
+    key: "dirtyCells";
+    value: Record<`${string}-${string}`, Grid>;
   };
 }
 
@@ -24,4 +24,8 @@ export interface Icache {
   removeChunk(range: string): Promise<void>;
 
   clearChunks(): Promise<void>;
+
+  saveDirtyCell(dirtyCells: Record<`${string}-${string}`, Grid>): Promise<void>;
+
+  getDirtyCells(): Promise<Record<`${string}-${string}`, Grid>>;
 }

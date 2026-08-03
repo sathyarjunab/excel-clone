@@ -1,6 +1,6 @@
 import { Grid } from "../../types/book";
 import { rangeConvertor } from "../../util/sheet";
-import { cacheSource, CacheSourceType } from "../registory/cache";
+import { clientDbSource, clientDbSourceType } from "../registory/clientDb";
 import { dataSource, DataSourceType } from "../registory/dataSource";
 import { IGatherer } from "./interface";
 
@@ -16,7 +16,7 @@ import { IGatherer } from "./interface";
 export class Gatherer implements IGatherer {
   constructor(
     public sheetName: string,
-    public cachingServiceType: CacheSourceType,
+    public cachingServiceType: clientDbSourceType,
     public dataSourceType: DataSourceType,
   ) {}
 
@@ -34,8 +34,8 @@ export class Gatherer implements IGatherer {
     const range = rangeConvertor(topRow, startCol);
 
     // 1. ✅ if found the data in the cached db send it back with no db req.
-    const cacheSourceInstance = await cacheSource[this.cachingServiceType]();
-    const cachedData = await cacheSourceInstance.getChunk(range);
+    const clientDbInstance = await clientDbSource[this.cachingServiceType]();
+    const cachedData = await clientDbInstance.getChunk(range);
     if (cachedData) return [cachedData];
 
     //2. 😒 got the data from the db.
@@ -50,7 +50,7 @@ export class Gatherer implements IGatherer {
 
     if (freshData)
       //3. 😊 cached the data in idb here.
-      await cacheSourceInstance.saveChunk(freshData);
+      await clientDbInstance.saveChunk(freshData);
     return freshData;
   }
 
@@ -64,8 +64,8 @@ export class Gatherer implements IGatherer {
     grid: Grid,
   ): Promise<void> {
     const range = rangeConvertor(row, col);
-    const cacheSourceInstance = await cacheSource[this.cachingServiceType]();
-    let sheet = await cacheSourceInstance.getChunk(range);
+    const clientDbInstance = await clientDbSource[this.cachingServiceType]();
+    let sheet = await clientDbInstance.getChunk(range);
     if (!sheet) return;
 
     ((sheet = {
@@ -75,6 +75,6 @@ export class Gatherer implements IGatherer {
         [cellKey]: grid,
       },
     }),
-      await cacheSourceInstance.saveChunk([sheet]));
+      await clientDbInstance.saveChunk([sheet]));
   }
 }

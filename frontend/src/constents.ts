@@ -1,4 +1,4 @@
-import { CacheSourceType } from "./factories/registory/cache";
+import { clientDbSourceType } from "./factories/registory/clientDb";
 import { DataSourceType } from "./factories/registory/dataSource";
 
 const X_MAX_RANGE = 500;
@@ -6,7 +6,7 @@ const Y_MAX_RANGE = 500;
 const MAX_ROWS_PER_VIEW = 50;
 const MAX_COLUMNS_PER_VIEW = 50;
 const DATASOURCE_TYPE = DataSourceType.API;
-const CACHING_SERVICE_TYPE = CacheSourceType.IDB;
+const DEFAULT_CLIENT_DB_SERVICE_TYPE = clientDbSourceType.IDB;
 const ALPHABETS = [
   "",
   "A",
@@ -43,6 +43,6 @@ export {
   MAX_ROWS_PER_VIEW,
   MAX_COLUMNS_PER_VIEW,
   DATASOURCE_TYPE,
-  CACHING_SERVICE_TYPE,
+  DEFAULT_CLIENT_DB_SERVICE_TYPE,
   ALPHABETS,
 };

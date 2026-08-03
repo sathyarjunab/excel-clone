@@ -1,20 +1,25 @@
 import { IDBPDatabase, openDB } from "idb";
+import { Grid, Sheet } from "../../types/book";
 import { ExcelDBSchema, Icache } from "./interface";
-import { Sheet } from "../../types/book";
 
 export class IDB implements Icache {
   private db: Promise<IDBPDatabase<ExcelDBSchema>>;
-  private DATA_BASE_VERSION = 1;
+  private DATA_BASE_VERSION = 4;
   private TEN_MINUTES_IN_MS = 10 * 60 * 1000; // 600,000 ms
 
   constructor() {
     this.db = openDB("excel-clone", this.DATA_BASE_VERSION, {
       upgrade(db) {
-        const store = db.createObjectStore("chunks", {
-          keyPath: "range",
-        });
+        if (!db.objectStoreNames.contains("chunks")) {
+          const store = db.createObjectStore("chunks", {
+            keyPath: "range",
+          });
+          store.createIndex("bookId_index", "bookId");
+        }
 
-        store.createIndex("bookId", "bookId");
+        if (!db.objectStoreNames.contains("appStore")) {
+          db.createObjectStore("appStore");
+        }
       },
     });
   }
@@ -52,5 +57,16 @@ export class IDB implements Icache {
     const database = await this.db;
 
     await database.clear("chunks");
+  }
+
+  async saveDirtyCell(sheetData: Record<`${string}-${string}`, Grid>) {
+    const database = await this.db;
+    await database.put("appStore", sheetData, "dirtyCells");
+  }
+
+  async getDirtyCells(): Promise<Record<`${string}-${string}`, Grid>> {
+    const database = await this.db;
+    const dirtyCells = (await database.get("appStore", "dirtyCells")) || {};
+    return dirtyCells;
   }
 }
