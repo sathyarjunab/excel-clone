@@ -36,7 +36,7 @@ export class Gatherer implements IGatherer {
     // 1. ✅ if found the data in the cached db send it back with no db req.
     const cacheSourceInstance = await cacheSource[this.cachingServiceType]();
     const cachedData = await cacheSourceInstance.getChunk(range);
-    if (cachedData) return cachedData.sheets;
+    if (cachedData) return [cachedData];
 
     //2. 😒 got the data from the db.
     const gatherApiData = await dataSource[this.dataSourceType]();
@@ -50,10 +50,7 @@ export class Gatherer implements IGatherer {
 
     if (freshData)
       //3. 😊 cached the data in idb here.
-      await cacheSourceInstance.saveChunk({
-        range: freshData[0]?.range ?? range,
-        sheets: freshData,
-      });
+      await cacheSourceInstance.saveChunk(freshData);
     return freshData;
   }
 
@@ -68,13 +65,16 @@ export class Gatherer implements IGatherer {
   ): Promise<void> {
     const range = rangeConvertor(row, col);
     const cacheSourceInstance = await cacheSource[this.cachingServiceType]();
-    const chunk = await cacheSourceInstance.getChunk(range);
-    if (!chunk) return;
-
-    const sheet = chunk.sheets.find((s) => s.sheetName === this.sheetName);
+    let sheet = await cacheSourceInstance.getChunk(range);
     if (!sheet) return;
 
-    sheet.data = { ...sheet.data, [cellKey]: grid };
-    await cacheSourceInstance.saveChunk(chunk);
+    ((sheet = {
+      ...sheet,
+      data: {
+        ...(sheet.data ?? {}),
+        [cellKey]: grid,
+      },
+    }),
+      await cacheSourceInstance.saveChunk([sheet]));
   }
 }

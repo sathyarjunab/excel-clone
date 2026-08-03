@@ -7,7 +7,10 @@ export function numberToAlphabet(num: number, result: string): string {
   const res = quo > 0 ? numberToAlphabet(quo, result) : "";
   return (result += res + ALPHABETS[rem]);
 }
-export function rangeConvertor(row: number, col: number): string {
+export function rangeConvertor(
+  row: number,
+  col: number,
+): `${string}-${string}` {
   // Snap the cell to the top-left corner of its chunk. Rows use the row range
   // and cols use the col range so the two can diverge without corrupting keys.
   const rowRange = Math.max(Math.ceil(row / X_MAX_RANGE), 1) * X_MAX_RANGE;

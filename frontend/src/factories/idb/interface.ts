@@ -1,10 +1,10 @@
 import { DBSchema } from "idb";
-import { Chunk } from "./service";
+import { Sheet } from "../../types/book";
 
 export interface ExcelDBSchema extends DBSchema {
   chunks: {
     key: string;
-    value: Chunk;
+    value: Sheet;
     indexes: {
       bookId: string;
     };
@@ -17,9 +17,9 @@ export interface ExcelDBSchema extends DBSchema {
 }
 
 export interface Icache {
-  saveChunk(chunk: Chunk): Promise<void>;
+  saveChunk(chunk: Sheet[]): Promise<void>;
 
-  getChunk(range: string): Promise<Chunk | undefined>;
+  getChunk(range: string): Promise<Sheet | undefined>;
 
   removeChunk(range: string): Promise<void>;
 

@@ -1,8 +1,6 @@
 import { IDBPDatabase, openDB } from "idb";
-import { Sheet } from "../../types/book";
 import { ExcelDBSchema, Icache } from "./interface";
-
-export type Chunk = { range: string; sheets: Sheet[] };
+import { Sheet } from "../../types/book";
 
 export class IDB implements Icache {
   private db: Promise<IDBPDatabase<ExcelDBSchema>>;
@@ -19,16 +17,17 @@ export class IDB implements Icache {
       },
     });
   }
-
-  //TODO: change the type from any -> valid one
-  async saveChunk(chunk: Chunk) {
+  async saveChunk(chunk: Sheet[]) {
     const database = await this.db;
-    await database.put("chunks", chunk);
+    // Create a single transaction for the "chunks" store
+    const tx = database.transaction("chunks", "readwrite");
+
+    // Put all items into the store concurrently within the transaction
+    await Promise.all([...chunk.map((item) => tx.store.put(item)), tx.done]);
   }
 
-  async getChunk(range: string): Promise<Chunk | undefined> {
+  async getChunk(range: string): Promise<Sheet | undefined> {
     const database = await this.db;
-
     return database.get("chunks", range);
   }
 
