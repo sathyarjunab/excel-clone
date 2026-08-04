@@ -14,18 +14,182 @@
 .sheet-tabs {
   display: flex;
   align-items: flex-end;
-  gap: 1px;
-  padding: 0 6px 0;
+  gap: 6px;
+  padding: 0 8px;
   background: #d9dde3;
   border-top: 1px solid #bcc5d1;
-  overflow-x: auto;
   flex-shrink: 0;
   min-height: 36px;
+}
+
+// Horizontal scrolling lives on this inner wrapper so the add-sheet popover
+// (which opens upward) isn't clipped by the tab bar's overflow.
+.sheet-tabs-scroll {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
   scrollbar-width: none;
 }
 
-.sheet-tabs::-webkit-scrollbar {
+.sheet-tabs-scroll::-webkit-scrollbar {
   display: none;
+}
+
+.sheet-add {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+}
+
+.sheet-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #b8c0cc;
+  border-radius: 50%;
+  background: #cfd5df;
+  color: #526071;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.sheet-add-btn:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.sheet-add-btn.active {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.sheet-add-popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  z-index: 20;
+  width: 244px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
+  animation: sheet-add-pop 0.14s ease-out;
+}
+
+// Little pointer connecting the popover to the button.
+.sheet-add-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 14px;
+  border: 7px solid transparent;
+  border-top-color: #ffffff;
+}
+
+.sheet-add-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.sheet-add-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 0.92rem;
+  color: #0f172a;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.sheet-add-input::placeholder {
+  color: #94a3b8;
+}
+
+.sheet-add-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.sheet-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.sheet-add-cancel,
+.sheet-add-create {
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.sheet-add-cancel {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+}
+
+.sheet-add-cancel:hover {
+  background: #f1f5f9;
+}
+
+.sheet-add-create {
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.sheet-add-create:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.sheet-add-create:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+@keyframes sheet-add-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .sheet-tab {

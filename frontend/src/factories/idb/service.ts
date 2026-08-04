@@ -12,9 +12,10 @@ export class IDB implements Icache {
       upgrade(db) {
         if (!db.objectStoreNames.contains("chunks")) {
           const store = db.createObjectStore("chunks", {
-            keyPath: "range",
+            keyPath: ["range", "sheetName"],
           });
           store.createIndex("bookId_index", "bookId");
+          store.createIndex("sheetName_index", "sheetName");
         }
 
         if (!db.objectStoreNames.contains("appStore")) {

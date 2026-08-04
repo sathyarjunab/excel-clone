@@ -7,6 +7,7 @@ export interface ExcelDBSchema extends DBSchema {
     value: Sheet & { timestamp: Date };
     indexes: {
       bookId_index: string;
+      sheetName_index: string;
     };
   };
 
