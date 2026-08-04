@@ -30,7 +30,7 @@ export class SheetService implements ISheetService {
 
       const existingRow = sheets.find((s) => {
         const [r, c] = rowsColConvertor(s.range);
-        return rows <= r && col <= c;
+        return rows <= r && col <= c && s.sheetName === name;
       });
 
       if (!existingRow) {

@@ -3,8 +3,10 @@ import { useParams } from "react-router-dom";
 import { UserContext } from "../context";
 import Sheet from "./sheet";
 import { dataSource } from "../factories/registory/dataSource";
-import { DATASOURCE_TYPE } from "../constents";
+import { DATASOURCE_TYPE, DEFAULT_CLIENT_DB_SERVICE_TYPE } from "../constents";
 import { DiamondPlus } from "lucide-react";
+import { toast } from "sonner";
+import { clientDbSource } from "../factories/registory/clientDb";
 
 export default function Book() {
   const { activeSheetName, setActiveSheetName, setActiveBookIndx } =
@@ -35,6 +37,44 @@ export default function Book() {
     setActiveSheetName(data[0]?.sheetNames ?? "New Sheet");
   }
 
+  async function handleNewSheetCreate() {
+    try {
+      if (!newSheetName.trim()) return; //TODO: show error message
+      const dataSourceInstance = await dataSource[DATASOURCE_TYPE]();
+      const clientDataSource =
+        await clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
+
+      await dataSourceInstance.saveSheets({
+        dirtyCells: { "0-0": { content: "", style: {} } },
+        name: newSheetName,
+        bookId: bookId ?? null,
+      });
+
+      if (!bookId || !activeSheetName) {
+        toast.error(
+          !bookId ? "Book id not found" : "Sheet name is not present",
+        );
+        return;
+      }
+
+      await clientDataSource.saveChunk([
+        {
+          id: "string",
+          data: { "0-0": { content: "", style: {} } },
+          sheetName: activeSheetName,
+          chunksCount: 1,
+          range: "500-500",
+          bookId: bookId,
+        },
+      ]);
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error("Failed to create sheet: " + err.message);
+      }
+      toast.error("Failed to create sheet: Unknown error");
+    }
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -58,9 +98,6 @@ export default function Book() {
               {sheet.sheetNames}
             </button>
           ))}
-        </div>
-
-        <div className="sheet-add">
           <button
             type="button"
             className={`sheet-add-btn ${showCreateModule ? "active" : ""}`}
@@ -68,9 +105,11 @@ export default function Book() {
             aria-label="Create new sheet"
             title="Create new sheet"
           >
-            <DiamondPlus size={18} />
+            <DiamondPlus size={20} />
           </button>
+        </div>
 
+        <div className="sheet-add">
           {showCreateModule && (
             <div
               className="sheet-add-popover"
@@ -104,9 +143,7 @@ export default function Book() {
                   type="button"
                   className="sheet-add-create"
                   disabled={!newSheetName.trim()}
-                  onClick={() => {
-                    console.log(newSheetName);
-                  }}
+                  onClick={handleNewSheetCreate}
                 >
                   Create
                 </button>

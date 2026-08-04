@@ -32,7 +32,7 @@ export interface DataSource {
     name,
     bookId,
   }: {
-    dirtyCells: Record<`${string}-${string}`, Grid> | undefined;
+    dirtyCells: Record<`${string}-${string}`, Grid>;
     name: string;
     bookId: string | null;
   }): Promise<void>;

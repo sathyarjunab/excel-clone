@@ -36,7 +36,11 @@ app.use("/api/book", bookRouter);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
-  res.status(500).json({ error: "Internal server error" });
+  if (err instanceof Error) {
+    res.status(500).json({ error: err.message });
+    return;
+  }
+  res.status(500).json({ error: "Unknown error" });
 });
 
 async function connectDb() {

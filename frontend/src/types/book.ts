@@ -2,7 +2,6 @@ export type Workbook = {
   id: string;
   createdAt?: Date;
   updatedAt?: Date;
-  userId?: string;
   bookName: string;
   sheets?: Sheet[];
 };
@@ -13,7 +12,6 @@ export type Sheet = {
   sheetName: string;
   chunksCount: number;
   range: string;
-  userId: string;
   bookId: string;
 };
 

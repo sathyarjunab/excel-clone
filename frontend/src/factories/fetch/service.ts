@@ -9,37 +9,31 @@ export class Api implements DataSource {
     query?: Record<string, string | number>,
     body?: T,
   ) {
-    try {
-      const q = Object.entries(query ?? {})
-        .map(([key, val], indx) =>
-          indx === 0
-            ? `?${encodeURIComponent(key)}=${encodeURIComponent(val)}`
-            : `${encodeURIComponent(key)}=${encodeURIComponent(val)}`,
-        )
-        .join("&");
+    const q = Object.entries(query ?? {})
+      .map(([key, val], indx) =>
+        indx === 0
+          ? `?${encodeURIComponent(key)}=${encodeURIComponent(val)}`
+          : `${encodeURIComponent(key)}=${encodeURIComponent(val)}`,
+      )
+      .join("&");
 
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}${q}`, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        ...(secure ? { credentials: "include" } : {}),
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
-      const data = (await res.json()) as K;
+    const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${url}${q}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      ...(secure ? { credentials: "include" } : {}),
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const data = await res.json();
 
-      return {
-        status: res.status,
-        ok: res.ok,
-        data,
-      };
-    } catch (err) {
-      return {
-        status: 500,
-        ok: false,
-        data: null,
-      };
-    }
+    if (!res.ok) throw new Error(data.error ?? "Unknown error");
+    console.log("Data fetched successfully:", data);
+    return {
+      status: res.status,
+      ok: res.ok,
+      data: data as K,
+    };
   }
 
   public async gatherData({
@@ -55,28 +49,54 @@ export class Api implements DataSource {
     endCol: number;
     sheetName: string;
   }) {
-    const { data } = await this.fetcher<Sheet[]>("/sheets/sheet", "GET", true, {
-      sheetName: sheetName,
-      startRow: topRow,
-      endRow: endRow,
-      startCol: startCol,
-      endCol: endCol,
-    });
+    try {
+      const { data } = await this.fetcher<Sheet[]>(
+        "/sheets/sheet",
+        "GET",
+        true,
+        {
+          sheetName: sheetName,
+          startRow: topRow,
+          endRow: endRow,
+          startCol: startCol,
+          endCol: endCol,
+        },
+      );
 
-    return data;
+      return data;
+    } catch (err) {
+      throw new Error(
+        "Failed to gather data: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
   }
 
   public async getSheetNames(
     bookId: string,
   ): Promise<getSheetReturnType<{ sheetNames: string; id: string }[]>> {
-    return await this.fetcher<{ sheetNames: string; id: string }[]>(
-      `/sheets/sheetNames/${bookId}`,
-      "GET",
-    );
+    try {
+      return await this.fetcher<{ sheetNames: string; id: string }[]>(
+        `/sheets/sheetNames/${bookId}`,
+        "GET",
+      );
+    } catch (err) {
+      throw new Error(
+        "Failed to get sheet names: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
   }
 
   public async getBooks(): Promise<getSheetReturnType<Workbook[]>> {
-    return await this.fetcher<Workbook[]>("/book/books", "GET", true);
+    try {
+      return await this.fetcher<Workbook[]>("/book/books", "GET", true);
+    } catch (err) {
+      throw new Error(
+        "Failed to get books: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
   }
 
   public async saveSheets({
@@ -88,10 +108,17 @@ export class Api implements DataSource {
     name: string;
     bookId: string | null;
   }): Promise<void> {
-    await this.fetcher("/sheets/save", "POST", true, undefined, {
-      dirtyCells: dirtyCells,
-      name: name,
-      bookId: bookId,
-    });
+    try {
+      await this.fetcher("/sheets/save", "POST", true, undefined, {
+        dirtyCells: dirtyCells,
+        name: name,
+        bookId: bookId,
+      });
+    } catch (err) {
+      throw new Error(
+        "Failed to save sheets: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
   }
 }

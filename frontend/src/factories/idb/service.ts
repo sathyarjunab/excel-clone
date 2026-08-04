@@ -4,7 +4,7 @@ import { ExcelDBSchema, Icache } from "./interface";
 
 export class IDB implements Icache {
   private db: Promise<IDBPDatabase<ExcelDBSchema>>;
-  private DATA_BASE_VERSION = 4;
+  private DATA_BASE_VERSION = 1;
   private TEN_MINUTES_IN_MS = 10 * 60 * 1000; // 600,000 ms
 
   constructor() {
@@ -36,22 +36,22 @@ export class IDB implements Icache {
     ]);
   }
 
-  async getChunk(range: string): Promise<Sheet | undefined> {
+  async getChunk(range: string, sheetName: string): Promise<Sheet | undefined> {
     const database = await this.db;
-    const sheets = await database.get("chunks", range);
+    const sheets = await database.get("chunks", [range, sheetName]);
     if (
       sheets?.timestamp &&
       Date.now() - new Date(sheets.timestamp).getTime() > this.TEN_MINUTES_IN_MS
     ) {
-      this.removeChunk(range);
+      this.removeChunk(range, sheetName);
     }
     return sheets;
   }
 
-  async removeChunk(range: string) {
+  async removeChunk(range: string, sheetName: string) {
     const database = await this.db;
 
-    await database.delete("chunks", range);
+    await database.delete("chunks", [range, sheetName]);
   }
 
   async clearChunks() {
