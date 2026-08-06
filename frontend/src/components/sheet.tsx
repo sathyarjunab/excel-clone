@@ -11,12 +11,19 @@ import {
 } from "react";
 import { UserContext } from "../context";
 import "../scss/sheet.scss";
-import { numberToAlphabet } from "../util/sheet";
+import { numberToAlphabet, typeComparer } from "../util/sheet";
 import { Grid } from "./grid";
 import { Gatherer } from "../factories/gatherer/service";
-import { DEFAULT_CLIENT_DB_SERVICE_TYPE, DATASOURCE_TYPE } from "../constents";
+import {
+  DEFAULT_CLIENT_DB_SERVICE_TYPE,
+  DATASOURCE_TYPE,
+  cellMovementKeysType,
+  cellMovementKeys,
+} from "../constents";
 import { clientSheet } from "../types/book";
 import { clientDbSource } from "../factories/registory/clientDb";
+import { UserInteractionService } from "../factories/keyDown/services";
+import { FourNodes } from "../factories/keyDown/interface";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -48,8 +55,8 @@ const clientDbInstancePromise =
   clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
 
 export default function Sheet() {
-  const { saveSheets, sheetData, setSheetData, activeSheetName } =
-    useContext(UserContext);
+  const { saveSheets, sheetData, setSheetData, activeSheetName, selectedCell } =
+    useContext(UserContext)!;
 
   const [rowsAndCol, setRowsAndCol] = useState<{
     rows: number;
@@ -61,6 +68,7 @@ export default function Sheet() {
   const [clickedCells, setClickedCells] = useState<SheetProps>();
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
   const [loading, setLoading] = useState(false);
+  const [fourNodes, setFourNodes] = useState<FourNodes>();
   // #5: the visible viewport size is measured, not frozen at module load, so
   // the grid recalculates its visible range when the window resizes.
   const [viewportSize, setViewportSize] = useState({
@@ -98,6 +106,36 @@ export default function Sheet() {
     [yAxisWidth],
   );
 
+  const handleKeyDown = useCallback(
+    (keyDown: KeyboardEvent) => {
+      const UserInteractionServiceInstance = new UserInteractionService();
+      // if (!fourNodes && selectedCell) {
+      //   console.log(">>", fourNodes);
+      // setFourNodes({
+      //   bottomLeft: selectedCell,
+      //   bottomRight: selectedCell,
+      //   topLeft: selectedCell,
+      //   topRight: selectedCell,
+      // });
+      // }
+      if (!fourNodes) return;
+      if (
+        typeComparer<cellMovementKeysType>(
+          keyDown.key,
+          cellMovementKeys.map((k) => k),
+        ) &&
+        fourNodes
+      )
+        setFourNodes(
+          UserInteractionServiceInstance.handleArrowClicks(
+            keyDown.key,
+            fourNodes,
+          ),
+        );
+    },
+    [selectedCell, fourNodes],
+  );
+
   // #5: keep viewportSize in sync with the actual element.
   useEffect(() => {
     const el = viewportRef.current;
@@ -110,7 +148,18 @@ export default function Sheet() {
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [selectedCell]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  useEffect(() => {
+    console.log(fourNodes);
+  }, [fourNodes]);
 
   const handleDoubleClick = useCallback((x: number, y: number) => {
     if (x === 0 || y === 0) return;

@@ -28,7 +28,6 @@ export class Api implements DataSource {
     const data = await res.json();
 
     if (!res.ok) throw new Error(data.error ?? "Unknown error");
-    console.log("Data fetched successfully:", data);
     return {
       status: res.status,
       ok: res.ok,
@@ -117,6 +116,17 @@ export class Api implements DataSource {
     } catch (err) {
       throw new Error(
         "Failed to save sheets: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
+  }
+
+  public async deleteSheet(sheetName: string) {
+    try {
+      await this.fetcher(`/sheets/removeSheets/${sheetName}`, "DELETE", true);
+    } catch (err) {
+      throw new Error(
+        "Failed to delete sheet: " +
           (err instanceof Error ? err.message : "Unknown error"),
       );
     }

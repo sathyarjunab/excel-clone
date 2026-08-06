@@ -17,3 +17,8 @@ export function rangeConvertor(
   const colRange = Math.max(Math.ceil(col / Y_MAX_RANGE), 1) * Y_MAX_RANGE;
   return `${rowRange}-${colRange}`;
 }
+
+export function typeComparer<T>(key: any, values: string[]): key is T {
+  if (typeof key !== "string") return false;
+  return values.includes(key);
+}

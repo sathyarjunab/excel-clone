@@ -32,12 +32,10 @@ export class Gatherer implements IGatherer {
     endCol: number;
   }) {
     const range = rangeConvertor(topRow, startCol);
-    console.log(range);
 
     // 1. ✅ if found the data in the cached db send it back with no db req.
     const clientDbInstance = await clientDbSource[this.cachingServiceType]();
     const cachedData = await clientDbInstance.getChunk(range, this.sheetName);
-    console.log(cachedData);
     if (cachedData) return [cachedData];
 
     //2. 😒 got the data from the db.

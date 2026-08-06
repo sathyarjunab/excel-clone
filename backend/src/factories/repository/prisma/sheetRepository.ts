@@ -30,4 +30,10 @@ export class PrismaSheetRepository implements ISheetRepository {
   updateData(id: string, data: Prisma.InputJsonValue) {
     return DB.sheet.update({ where: { id }, data: { data } });
   }
+
+  deleteSheet(userId: string, sheetName: string) {
+    return DB.sheet.deleteMany({
+      where: { userId, sheetName: sheetName.trim() },
+    });
+  }
 }

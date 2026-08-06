@@ -1,6 +1,7 @@
-import React, { CSSProperties } from "react";
+import React, { CSSProperties, useContext } from "react";
 import "./../scss/sheet.scss";
 import { SheetProps } from "./sheet";
+import { UserContext } from "../context";
 
 function child({
   handleDoubleClick,
@@ -13,10 +14,11 @@ function child({
   handleDoubleClick: () => void;
   handleDataEntry: (e: React.ChangeEvent<HTMLInputElement>) => void;
   value: string | null;
-  coOrdinates: string;
+  coOrdinates: `${number}-${number}`;
   clickedCells: SheetProps | undefined;
   customStyle?: CSSProperties;
 }) {
+  const { setSelectedCell } = useContext(UserContext)!;
   return (
     <>
       {clickedCells?.currentClickedCell === coOrdinates ? (
@@ -33,6 +35,10 @@ function child({
           style={customStyle}
           onDoubleClick={() => {
             handleDoubleClick();
+          }}
+          onClick={() => {
+            console.log(coOrdinates);
+            setSelectedCell(coOrdinates);
           }}
         >
           {value}

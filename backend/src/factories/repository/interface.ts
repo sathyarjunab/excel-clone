@@ -17,6 +17,7 @@ export interface ISheetRepository {
   ): Promise<Pick<sheet, "sheetName" | "id">[]>;
   create(data: Prisma.sheetUncheckedCreateInput): Promise<sheet>;
   updateData(id: string, data: Prisma.InputJsonValue): Promise<sheet>;
+  deleteSheet(userId: string, sheetName: string): Promise<Prisma.BatchPayload>;
 }
 
 export interface IBookRepository {

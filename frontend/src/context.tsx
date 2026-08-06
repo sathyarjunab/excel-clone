@@ -20,6 +20,7 @@ export const UserContext = createContext<{
   activeBookIndx: string | null;
   activeSheet: Sheet[] | null;
   sheetData: clientSheet;
+  selectedCell: `${string}-${string}` | null;
   setActiveBookIndx: Dispatch<React.SetStateAction<string | null>>;
   setUser: Dispatch<React.SetStateAction<null>>;
   setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
@@ -27,21 +28,8 @@ export const UserContext = createContext<{
   setActiveSheet: Dispatch<React.SetStateAction<Sheet[] | null>>;
   saveSheets: () => void;
   setSheetData: Dispatch<React.SetStateAction<clientSheet>>;
-}>({
-  user: null,
-  books: null,
-  activeSheetName: null,
-  activeBookIndx: null,
-  activeSheet: null,
-  sheetData: EMPTY_SHEET,
-  setActiveBookIndx: () => {},
-  setUser: () => {},
-  setBooks: () => {},
-  setActiveSheetName: () => {},
-  saveSheets: () => {},
-  setActiveSheet: () => {},
-  setSheetData: () => {},
-});
+  setSelectedCell: Dispatch<React.SetStateAction<`${string}-${string}` | null>>;
+} | null>(null);
 
 const clientDbInstancePromise =
   clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
@@ -53,6 +41,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [activeSheet, setActiveSheet] = useState<Sheet[] | null>(null);
   const [activeSheetName, setActiveSheetName] = useState<string>("New Sheet");
   const [activeBookIndx, setActiveBookIndx] = useState<string | null>(null);
+  const [selectedCell, setSelectedCell] = useState<
+    `${string}-${string}` | null
+  >(null);
 
   // Cell data is real React state now — mutating it re-renders the grid the
   // normal way, so there is no more `ref + version++` counter to force paints.
@@ -74,7 +65,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
       await clientDbInstance.saveDirtyCell({});
     });
   }, [activeBookIndx, activeSheetName]);
-
   const value = useMemo(
     () => ({
       user,
@@ -83,6 +73,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       activeSheetName,
       activeSheet,
       sheetData,
+      selectedCell,
       setUser,
       setBooks,
       setActiveSheetName,
@@ -90,6 +81,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setActiveBookIndx,
       setActiveSheet,
       setSheetData,
+      setSelectedCell,
     }),
     [
       user,
@@ -98,6 +90,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       activeSheetName,
       activeSheet,
       sheetData,
+      selectedCell,
       saveSheets,
     ],
   );

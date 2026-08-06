@@ -4,7 +4,7 @@ import { ExcelDBSchema, Icache } from "./interface";
 
 export class IDB implements Icache {
   private db: Promise<IDBPDatabase<ExcelDBSchema>>;
-  private DATA_BASE_VERSION = 1;
+  private DATA_BASE_VERSION = 6;
   private TEN_MINUTES_IN_MS = 10 * 60 * 1000; // 600,000 ms
 
   constructor() {
@@ -69,5 +69,21 @@ export class IDB implements Icache {
     const database = await this.db;
     const dirtyCells = (await database.get("appStore", "dirtyCells")) || {};
     return dirtyCells;
+  }
+
+  async removeSheet(sheetName: string) {
+    const database = await this.db;
+    const tx = database.transaction("chunks", "readwrite");
+
+    const index = tx.store.index("sheetName_index");
+
+    let cursor = await index.openCursor(sheetName);
+
+    while (cursor) {
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
+
+    await tx.done;
   }
 }

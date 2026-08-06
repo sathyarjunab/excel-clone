@@ -6,7 +6,7 @@ import { UserContext } from "../context";
 import { dataSource } from "../factories/registory/dataSource";
 
 export default function Home() {
-  const { books, setBooks, setActiveBookIndx } = useContext(UserContext);
+  const { books, setBooks, setActiveBookIndx } = useContext(UserContext)!;
   const navigation = useNavigate();
 
   useEffect(() => {

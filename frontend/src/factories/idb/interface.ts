@@ -29,4 +29,6 @@ export interface Icache {
   saveDirtyCell(dirtyCells: Record<`${string}-${string}`, Grid>): Promise<void>;
 
   getDirtyCells(): Promise<Record<`${string}-${string}`, Grid>>;
+
+  removeSheet(sheetName: string): Promise<void>;
 }

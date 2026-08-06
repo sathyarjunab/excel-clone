@@ -22,4 +22,5 @@ export interface ISheetService {
     userId: string,
     bookId: string,
   ): Promise<{ sheetNames: string; id: string }[]>;
+  removeSheet(userId: string, sheetId: string): Promise<void>;
 }

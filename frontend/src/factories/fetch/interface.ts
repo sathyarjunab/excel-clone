@@ -36,4 +36,5 @@ export interface DataSource {
     name: string;
     bookId: string | null;
   }): Promise<void>;
+  deleteSheet(sheetName: string): Promise<void>;
 }

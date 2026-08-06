@@ -36,6 +36,16 @@ const ALPHABETS = [
   "Y",
   "Z",
 ];
+export const cellMovementKeys = [
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+] as const;
+
+export type cellMovementKeysType = (typeof cellMovementKeys)[number];
+
+export type KeyboardEvents = cellMovementKeysType | "Enter" | "Escape";
 
 export {
   X_MAX_RANGE,

@@ -61,3 +61,18 @@ sheetsRouter.get("/sheet", async (req, res) => {
 
   res.status(200).send(sheets);
 });
+
+sheetsRouter.delete("/removeSheets/:sheetName", async (req, res) => {
+  const sheetName = await Joi.string<string>()
+    .required()
+    .validateAsync(req.params.sheetName);
+
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  getSheetService().then((service) => {
+    service.removeSheet(userId, sheetName);
+  });
+
+  res.status(200).send({ message: "sheet removed" });
+});

@@ -87,4 +87,8 @@ export class SheetService implements ISheetService {
     const sheets = await this.repo.distinctSheetNames(userId, bookId);
     return sheets.map((s) => ({ sheetNames: s.sheetName, id: s.id }));
   }
+
+  async removeSheet(userId: string, sheetId: string) {
+    await this.repo.deleteSheet(userId, sheetId);
+  }
 }
