@@ -78,92 +78,6 @@ export default function Sheet() {
 
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
 
-  const xAxisStyle = useMemo<CSSProperties>(
-    () => ({
-      backgroundColor: "#F3F3F3",
-      justifyContent: "center",
-      color: "#616174",
-      zIndex: 2,
-    }),
-    [],
-  );
-  const yAxisStyle = useMemo<CSSProperties>(
-    () => ({
-      backgroundColor: "#F3F3F3",
-      width: `${yAxisWidth}px`,
-      justifyContent: "end",
-      color: "#616174",
-      zIndex: 2,
-      paddingRight: 6,
-      textAlign: "right",
-    }),
-    [yAxisWidth],
-  );
-
-  const handleKeyDown = useCallback(
-    (keyDown: KeyboardEvent) => {
-      const UserInteractionServiceInstance = new UserInteractionService();
-      if (!fourNodes) return;
-      if (
-        typeComparer<cellMovementKeysType>(
-          keyDown.key,
-          cellMovementKeys.map((k) => k),
-        ) &&
-        fourNodes
-      ) {
-        setFourNodes((prev) => {
-          if (!prev) return prev;
-          if (!keyDown.shiftKey) {
-            return UserInteractionServiceInstance.handleArrowClicks(
-              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-              keyDown.key as cellMovementKeysType,
-              prev,
-            );
-          } else {
-            return UserInteractionServiceInstance.handleShiftArrowClicks(
-              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-              keyDown.key as cellMovementKeysType,
-              prev,
-            );
-          }
-        });
-      }
-    },
-    [fourNodes],
-  );
-
-  // #5: keep viewportSize in sync with the actual element.
-  useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-
-    const measure = () =>
-      setViewportSize({ height: el.clientHeight, width: el.clientWidth });
-
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleKeyDown]);
-
-  useEffect(() => {
-    if (!selectedCell) return;
-    setFourNodes({
-      bottomLeft: selectedCell,
-      bottomRight: selectedCell,
-      topLeft: selectedCell,
-      topRight: selectedCell,
-      activeCell: selectedCell,
-    });
-  }, [selectedCell]);
-
   const handleDoubleClick = useCallback((x: number, y: number) => {
     if (x === 0 || y === 0) return;
     setClickedCells((prev) => ({
@@ -224,14 +138,6 @@ export default function Sheet() {
     }, FETCH_DEBOUNCE_MS);
   }, [rowsAndCol, viewportSize, activeSheetName, setSheetData, scrollPosition]);
 
-  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
-    setScrollPosition({
-      top: e.currentTarget.scrollTop,
-      left: e.currentTarget.scrollLeft,
-    });
-    handleFetchData();
-  };
-
   const handleDataEntry = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const content = e.target.value;
@@ -272,24 +178,73 @@ export default function Sheet() {
       );
 
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveSheets(), SAVE_DEBOUNCE_MS);
+      saveTimer.current = setTimeout(
+        () => saveSheets(setLoading),
+        SAVE_DEBOUNCE_MS,
+      );
     },
     [clickedCells, activeSheetName, saveSheets, setSheetData],
   );
 
-  // Fetch on first mount and whenever the active sheet changes.
-  useEffect(() => {
-    handleFetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSheetName]);
+  const handleKeyDown = useCallback(
+    (keyDown: KeyboardEvent) => {
+      if (keyDown.key === "Enter") {
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        if (Object.keys(sheetData.dirtyCells).length === 0)
+          saveSheets(setLoading);
+      }
 
-  // Clear pending timers on unmount.
-  useEffect(() => {
-    return () => {
-      if (fetchTimer.current) clearTimeout(fetchTimer.current);
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, []);
+      const UserInteractionServiceInstance = new UserInteractionService();
+      if (!fourNodes) return;
+      if (
+        typeComparer<cellMovementKeysType>(
+          keyDown.key,
+          cellMovementKeys.map((k) => k),
+        ) &&
+        fourNodes
+      ) {
+        setFourNodes((prev) => {
+          if (!prev) return prev;
+          if (!keyDown.shiftKey) {
+            return UserInteractionServiceInstance.handleArrowClicks(
+              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
+              keyDown.key as cellMovementKeysType,
+              prev,
+            );
+          } else {
+            return UserInteractionServiceInstance.handleShiftArrowClicks(
+              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
+              keyDown.key as cellMovementKeysType,
+              prev,
+            );
+          }
+        });
+      }
+    },
+    [fourNodes],
+  );
+
+  const xAxisStyle = useMemo<CSSProperties>(
+    () => ({
+      backgroundColor: "#F3F3F3",
+      justifyContent: "center",
+      color: "#616174",
+      zIndex: 2,
+    }),
+    [],
+  );
+  const yAxisStyle = useMemo<CSSProperties>(
+    () => ({
+      backgroundColor: "#F3F3F3",
+      width: `${yAxisWidth}px`,
+      justifyContent: "end",
+      color: "#616174",
+      zIndex: 2,
+      paddingRight: 6,
+      textAlign: "right",
+    }),
+    [yAxisWidth],
+  );
 
   const visibleRange = useMemo(() => {
     const startRow = Math.max(0, Math.ceil(scrollPosition.top / CELL_HEIGHT));
@@ -304,18 +259,6 @@ export default function Sheet() {
     );
     return { startRow, endRow, startCol, endCol };
   }, [scrollPosition, rowsAndCol, viewportSize]);
-
-  // Grow the sheet as the user approaches the current edge. Kept as its own
-  // effect because it is a side effect and must not live inside the render memo.
-  useEffect(() => {
-    const { endRow, endCol } = visibleRange;
-    if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
-      setRowsAndCol((prev) => ({ ...prev, rows: prev.rows + 1000 }));
-    }
-    if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
-      setRowsAndCol((prev) => ({ ...prev, cols: prev.cols + 1000 }));
-    }
-  }, [visibleRange, rowsAndCol]);
 
   // #1: the visible cells are DERIVED render output, computed with useMemo
   // during render — never stored in state and rebuilt from an effect.
@@ -443,6 +386,69 @@ export default function Sheet() {
       />
     );
   }, [fourNodes, yAxisWidth]);
+
+  // keep viewportSize in sync with the actual element.
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const measure = () =>
+      setViewportSize({ height: el.clientHeight, width: el.clientWidth });
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      // Clear pending timers on unmount.
+      if (fetchTimer.current) clearTimeout(fetchTimer.current);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  useEffect(() => {
+    if (!selectedCell) return;
+    setFourNodes({
+      bottomLeft: selectedCell,
+      bottomRight: selectedCell,
+      topLeft: selectedCell,
+      topRight: selectedCell,
+      activeCell: selectedCell,
+    });
+  }, [selectedCell]);
+
+  // Fetch on first mount and whenever the active sheet changes.
+  useEffect(() => {
+    handleFetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSheetName]);
+
+  // Grow the sheet as the user approaches the current edge. Kept as its own
+  // effect because it is a side effect and must not live inside the render memo.
+  useEffect(() => {
+    const { endRow, endCol } = visibleRange;
+    if (endRow > rowsAndCol.rows - 100 && endRow <= rowsAndCol.rows) {
+      setRowsAndCol((prev) => ({ ...prev, rows: prev.rows + 1000 }));
+    }
+    if (endCol > rowsAndCol.cols - 100 && endCol <= rowsAndCol.cols) {
+      setRowsAndCol((prev) => ({ ...prev, cols: prev.cols + 1000 }));
+    }
+  }, [visibleRange, rowsAndCol]);
+
+  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+    setScrollPosition({
+      top: e.currentTarget.scrollTop,
+      left: e.currentTarget.scrollLeft,
+    });
+    handleFetchData();
+  };
 
   return (
     <div className="sheet-shell">

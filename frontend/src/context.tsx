@@ -26,7 +26,7 @@ export const UserContext = createContext<{
   setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
   setActiveSheetName: Dispatch<React.SetStateAction<string>>;
   setActiveSheet: Dispatch<React.SetStateAction<Sheet[] | null>>;
-  saveSheets: () => void;
+  saveSheets: (loaderSetter: Dispatch<React.SetStateAction<boolean>>) => void;
   setSheetData: Dispatch<React.SetStateAction<clientSheet>>;
   setSelectedCell: Dispatch<React.SetStateAction<`${string}-${string}` | null>>;
 } | null>(null);
@@ -49,22 +49,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // normal way, so there is no more `ref + version++` counter to force paints.
   const [sheetData, setSheetData] = useState<clientSheet>(EMPTY_SHEET);
 
-  const saveSheets = useCallback(async () => {
-    const dirtyCells = await (await clientDbInstancePromise).getDirtyCells();
+  const saveSheets = useCallback(
+    async (loaderSetter: Dispatch<React.SetStateAction<boolean>>) => {
+      loaderSetter(true);
+      const dirtyCells = await (await clientDbInstancePromise).getDirtyCells();
 
-    await (
-      await dataSource[DATASOURCE_TYPE]()
-    ).saveSheets({
-      dirtyCells,
-      name: activeSheetName,
-      bookId: activeBookIndx,
-    });
+      if (Object.keys(dirtyCells).length === 0) {
+        loaderSetter(false);
+        return;
+      }
 
-    setSheetData((prev) => ({ ...prev, dirtyCells: {} }));
-    clientDbInstancePromise.then(async (clientDbInstance) => {
-      await clientDbInstance.saveDirtyCell({});
-    });
-  }, [activeBookIndx, activeSheetName]);
+      await (
+        await dataSource[DATASOURCE_TYPE]()
+      ).saveSheets({
+        dirtyCells,
+        name: activeSheetName,
+        bookId: activeBookIndx,
+      });
+
+      setSheetData((prev) => ({ ...prev, dirtyCells: {} }));
+      clientDbInstancePromise.then(async (clientDbInstance) => {
+        await clientDbInstance.saveDirtyCell({});
+      });
+      loaderSetter(false);
+    },
+    [activeBookIndx, activeSheetName],
+  );
   const value = useMemo(
     () => ({
       user,
