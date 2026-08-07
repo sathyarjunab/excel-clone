@@ -21,7 +21,8 @@ function child({
   const { setSelectedCell } = useContext(UserContext)!;
   return (
     <>
-      {clickedCells?.currentClickedCell === coOrdinates ? (
+      {clickedCells?.currentClickedCell === coOrdinates &&
+      clickedCells.makeInputActive ? (
         <input
           className="grid-cell"
           style={customStyle}

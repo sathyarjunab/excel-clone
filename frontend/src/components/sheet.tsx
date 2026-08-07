@@ -33,6 +33,7 @@ import { FourNodes } from "../factories/keyDown/interface";
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
   currentClickedCell: `${string}-${string}` | undefined;
+  makeInputActive: boolean;
 };
 
 // Fallback viewport size before the ResizeObserver has measured the element.
@@ -78,12 +79,14 @@ export default function Sheet() {
 
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
 
-  const handleDoubleClick = useCallback((x: number, y: number) => {
-    if (x === 0 || y === 0) return;
-    setClickedCells((prev) => ({
-      prevClickedCell: prev?.currentClickedCell,
-      currentClickedCell: `${x}-${y}`,
-    }));
+  const handleDoubleClick = useCallback(() => {
+    setClickedCells((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        makeInputActive: true,
+      };
+    });
   }, []);
 
   const handleFetchData = useCallback(() => {
@@ -188,15 +191,28 @@ export default function Sheet() {
 
   const handleKeyDown = useCallback(
     (keyDown: KeyboardEvent) => {
+      const UserInteractionServiceInstance = new UserInteractionService();
       if (keyDown.key === "Enter") {
         if (saveTimer.current) clearTimeout(saveTimer.current);
-        if (Object.keys(sheetData.dirtyCells).length === 0)
-          saveSheets(setLoading);
-      }
-
-      const UserInteractionServiceInstance = new UserInteractionService();
-      if (!fourNodes) return;
-      if (
+        saveSheets(setLoading);
+        setFourNodes((prev) => {
+          if (!prev) return prev;
+          return UserInteractionServiceInstance.handleArrowClicks(
+            // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
+            "ArrowDown",
+            prev,
+          );
+        });
+        setClickedCells((prev) => {
+          if (!prev || !prev.currentClickedCell) return prev;
+          const [rowStr, colStr] = prev.currentClickedCell.split("-");
+          return {
+            prevClickedCell: prev.currentClickedCell,
+            currentClickedCell: `${Number(rowStr) + 1}-${colStr}`,
+            makeInputActive: false,
+          };
+        });
+      } else if (
         typeComparer<cellMovementKeysType>(
           keyDown.key,
           cellMovementKeys.map((k) => k),
@@ -282,7 +298,7 @@ export default function Sheet() {
         visibleCells.push(
           <Grid
             handleDataEntry={handleDataEntry}
-            handleDoubleClick={() => handleDoubleClick(x, y)}
+            handleDoubleClick={() => handleDoubleClick()}
             key={`${x}-${y}`}
             value={val}
             customStyle={customStyle}
@@ -422,6 +438,12 @@ export default function Sheet() {
       topRight: selectedCell,
       activeCell: selectedCell,
     });
+    const [x, y] = selectedCell.split("-").map(Number);
+    setClickedCells((prev) => ({
+      prevClickedCell: prev?.currentClickedCell,
+      currentClickedCell: `${x}-${y}`,
+      makeInputActive: false,
+    }));
   }, [selectedCell]);
 
   // Fetch on first mount and whenever the active sheet changes.
