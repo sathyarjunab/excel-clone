@@ -47,6 +47,16 @@ export type cellMovementKeysType = (typeof cellMovementKeys)[number];
 
 export type KeyboardEvents = cellMovementKeysType | "Enter" | "Escape";
 
+const CELL_WIDTH = 64;
+const CELL_HEIGHT = 20;
+const Y_AXIS_WIDTH = 40;
+
+// How long the grid waits after the last scroll before it fetches the newly
+// visible range. Short enough to feel instant, long enough to skip the
+// intermediate frames of a fast scroll.
+const FETCH_DEBOUNCE_MS = 200;
+const SAVE_DEBOUNCE_MS = 2000;
+
 export {
   X_MAX_RANGE,
   Y_MAX_RANGE,
@@ -55,4 +65,9 @@ export {
   DATASOURCE_TYPE,
   DEFAULT_CLIENT_DB_SERVICE_TYPE,
   ALPHABETS,
+  CELL_WIDTH,
+  CELL_HEIGHT,
+  Y_AXIS_WIDTH,
+  FETCH_DEBOUNCE_MS,
+  SAVE_DEBOUNCE_MS,
 };

@@ -19,6 +19,11 @@ import {
   DATASOURCE_TYPE,
   cellMovementKeysType,
   cellMovementKeys,
+  CELL_HEIGHT,
+  CELL_WIDTH,
+  SAVE_DEBOUNCE_MS,
+  FETCH_DEBOUNCE_MS,
+  Y_AXIS_WIDTH,
 } from "../constents";
 import { clientSheet } from "../types/book";
 import { clientDbSource } from "../factories/registory/clientDb";
@@ -29,17 +34,6 @@ export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
   currentClickedCell: `${string}-${string}` | undefined;
 };
-
-//TODO: move this to constant file
-const CELL_WIDTH = 64;
-const CELL_HEIGHT = 20;
-const Y_AXIS_WIDTH = 40;
-
-// How long the grid waits after the last scroll before it fetches the newly
-// visible range. Short enough to feel instant, long enough to skip the
-// intermediate frames of a fast scroll.
-const FETCH_DEBOUNCE_MS = 200;
-const SAVE_DEBOUNCE_MS = 2000;
 
 // Fallback viewport size before the ResizeObserver has measured the element.
 const FALLBACK_HEIGHT =
@@ -109,15 +103,6 @@ export default function Sheet() {
   const handleKeyDown = useCallback(
     (keyDown: KeyboardEvent) => {
       const UserInteractionServiceInstance = new UserInteractionService();
-      // if (!fourNodes && selectedCell) {
-      //   console.log(">>", fourNodes);
-      // setFourNodes({
-      //   bottomLeft: selectedCell,
-      //   bottomRight: selectedCell,
-      //   topLeft: selectedCell,
-      //   topRight: selectedCell,
-      // });
-      // }
       if (!fourNodes) return;
       if (
         typeComparer<cellMovementKeysType>(
@@ -125,15 +110,18 @@ export default function Sheet() {
           cellMovementKeys.map((k) => k),
         ) &&
         fourNodes
-      )
-        setFourNodes(
-          UserInteractionServiceInstance.handleArrowClicks(
-            keyDown.key,
-            fourNodes,
-          ),
-        );
+      ) {
+        setFourNodes((prev) => {
+          if (!prev) return prev;
+          return UserInteractionServiceInstance.handleArrowClicks(
+            // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
+            keyDown.key as cellMovementKeysType,
+            prev,
+          );
+        });
+      }
     },
-    [selectedCell, fourNodes],
+    [fourNodes],
   );
 
   // #5: keep viewportSize in sync with the actual element.
@@ -148,7 +136,7 @@ export default function Sheet() {
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [selectedCell]);
+  }, []);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -158,8 +146,14 @@ export default function Sheet() {
   }, [handleKeyDown]);
 
   useEffect(() => {
-    console.log(fourNodes);
-  }, [fourNodes]);
+    if (!selectedCell) return;
+    setFourNodes({
+      bottomLeft: selectedCell,
+      bottomRight: selectedCell,
+      topLeft: selectedCell,
+      topRight: selectedCell,
+    });
+  }, [selectedCell]);
 
   const handleDoubleClick = useCallback((x: number, y: number) => {
     if (x === 0 || y === 0) return;
@@ -401,6 +395,46 @@ export default function Sheet() {
     handleDoubleClick,
   ]);
 
+  // The selection (fourNodes) is drawn as ONE overlay spanning the whole
+  // range, not by styling each cell. This keeps `fourNodes` out of the `cells`
+  // memo, so moving the selection updates a single div instead of re-rendering
+  // every cell it covers — the same decoupling used for the loading indicator.
+  const selectionOverlay = useMemo(() => {
+    if (!fourNodes) return null;
+
+    let minRow = Infinity;
+    let maxRow = -Infinity;
+    let minCol = Infinity;
+    let maxCol = -Infinity;
+    for (const corner of [
+      fourNodes.topLeft,
+      fourNodes.topRight,
+      fourNodes.bottomLeft,
+      fourNodes.bottomRight,
+    ]) {
+      const [row, col] = corner.split("-").map(Number);
+      if (row < minRow) minRow = row;
+      if (row > maxRow) maxRow = row;
+      if (col < minCol) minCol = col;
+      if (col > maxCol) maxCol = col;
+    }
+
+    // Never draw over the frozen header row/column.
+    if (minRow < 1 || minCol < 1) return null;
+
+    return (
+      <div
+        className="sheet-selection"
+        style={{
+          top: `${minRow * CELL_HEIGHT}px`,
+          left: `${yAxisWidth + (minCol - 1) * CELL_WIDTH}px`,
+          width: `${(maxCol - minCol + 1) * CELL_WIDTH}px`,
+          height: `${(maxRow - minRow + 1) * CELL_HEIGHT}px`,
+        }}
+      />
+    );
+  }, [fourNodes, yAxisWidth]);
+
   return (
     <div className="sheet-shell">
       <div className="sheet-viewport" ref={viewportRef} onScroll={handleScroll}>
@@ -452,6 +486,7 @@ export default function Sheet() {
             }}
           />
           {cells.visibleCells}
+          {selectionOverlay}
         </div>
       </div>
       {/* Fetch indicator: a single element pinned to the visible viewport

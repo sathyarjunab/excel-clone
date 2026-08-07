@@ -16,25 +16,24 @@ export class UserInteractionService implements IUserInteraction {
     key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
     fourNodes: FourNodes,
   ) {
-    console.log(key);
     // In the bellow switch case it is confusing when the row or the column come backs to zero and go on reducing the value then the top node becomes the bottom node and the bottom node becomes the top node as per the naming convention.
     switch (key) {
       case "ArrowLeft":
       case "ArrowRight":
-        const [topLeftX, topLeftY] = fourNodes["topLeft"].split("-");
-        const [bottomLeftX] = fourNodes["bottomLeft"].split("-");
+        const [topRightX, topRightY] = fourNodes["topRight"].split("-");
+        const [bottomLeftX] = fourNodes["bottomRight"].split("-");
         const columnIncrementedValue =
-          Number(topLeftY) + ("ArrowRight" === key ? 1 : -1);
+          Number(topRightY) + ("ArrowRight" === key ? 1 : -1);
         if (columnIncrementedValue < 0) return fourNodes;
         fourNodes = {
           ...fourNodes,
-          topLeft: `${topLeftX}-${columnIncrementedValue}`,
-          bottomLeft: `${bottomLeftX}-${columnIncrementedValue}`,
+          topRight: `${topRightX}-${columnIncrementedValue}`,
+          bottomRight: `${bottomLeftX}-${columnIncrementedValue}`,
         };
         break;
       case "ArrowUp":
       case "ArrowDown":
-        const [_topRightX, topRightY] = fourNodes["topRight"].split("-");
+        const [_bottomLeftX, bottomLeftY] = fourNodes["bottomLeft"].split("-");
         const [bottomRightX, bottomRightY] =
           fourNodes["bottomRight"].split("-");
         const rowIncrementor =
@@ -42,7 +41,7 @@ export class UserInteractionService implements IUserInteraction {
         if (rowIncrementor < 0) return fourNodes;
         fourNodes = {
           ...fourNodes,
-          bottomLeft: `${rowIncrementor}-${topRightY}`,
+          bottomLeft: `${rowIncrementor}-${bottomLeftY}`,
           bottomRight: `${rowIncrementor}-${bottomRightY}`,
         };
         break;

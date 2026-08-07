@@ -138,6 +138,19 @@
   }
 }
 
+// A single element spanning the whole fourNodes range, layered above the
+// cells. Translucent fill keeps cell text readable; pointer-events: none lets
+// clicks and double-clicks fall through to the cell underneath.
+.sheet-selection {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 2px solid #1e7145;
+  background-color: rgba(30, 113, 69, 0.12);
+  pointer-events: none;
+  will-change: top, left, width, height;
+}
+
 .axis-cell {
   // Positioned by the same absolute (left/top) coordinate model as the data
   // cells, so headers always align with their column/row.
