@@ -3,12 +3,17 @@ export type FourNodes = {
   bottomLeft: `${string}-${string}`;
   topRight: `${string}-${string}`;
   bottomRight: `${string}-${string}`;
+  activeCell: `${string}-${string}`;
 };
 
 export interface IUserInteraction {
   // handleKeyDown(keyDown: KeyboardEvents): IUserInteraction["handleArrowClicks"];
+  handleShiftArrowClicks(
+    key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+    fourNodes: FourNodes,
+  ): FourNodes;
   handleArrowClicks(
-    keyDown: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
-    fourPoints: FourNodes,
+    key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+    fourNodes: FourNodes,
   ): FourNodes;
 }

@@ -113,11 +113,19 @@ export default function Sheet() {
       ) {
         setFourNodes((prev) => {
           if (!prev) return prev;
-          return UserInteractionServiceInstance.handleArrowClicks(
-            // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-            keyDown.key as cellMovementKeysType,
-            prev,
-          );
+          if (!keyDown.shiftKey) {
+            return UserInteractionServiceInstance.handleArrowClicks(
+              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
+              keyDown.key as cellMovementKeysType,
+              prev,
+            );
+          } else {
+            return UserInteractionServiceInstance.handleShiftArrowClicks(
+              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
+              keyDown.key as cellMovementKeysType,
+              prev,
+            );
+          }
         });
       }
     },
@@ -152,6 +160,7 @@ export default function Sheet() {
       bottomRight: selectedCell,
       topLeft: selectedCell,
       topRight: selectedCell,
+      activeCell: selectedCell,
     });
   }, [selectedCell]);
 
@@ -413,10 +422,10 @@ export default function Sheet() {
       fourNodes.bottomRight,
     ]) {
       const [row, col] = corner.split("-").map(Number);
-      if (row < minRow) minRow = row;
-      if (row > maxRow) maxRow = row;
-      if (col < minCol) minCol = col;
-      if (col > maxCol) maxCol = col;
+      if (row && row < minRow) minRow = row;
+      if (row && row > maxRow) maxRow = row;
+      if (col && col < minCol) minCol = col;
+      if (col && col > maxCol) maxCol = col;
     }
 
     // Never draw over the frozen header row/column.

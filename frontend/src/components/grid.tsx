@@ -37,7 +37,6 @@ function child({
             handleDoubleClick();
           }}
           onClick={() => {
-            console.log(coOrdinates);
             setSelectedCell(coOrdinates);
           }}
         >
