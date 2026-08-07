@@ -1,7 +1,7 @@
 import { FourNodes, IUserInteraction } from "./interface";
 
 export class UserInteractionService implements IUserInteraction {
-  handleShiftArrowClicks(
+  private handleShiftArrowClicks(
     key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
     fourNodes: FourNodes,
   ) {
@@ -36,7 +36,7 @@ export class UserInteractionService implements IUserInteraction {
     return fourNodes;
   }
 
-  handleArrowClicks(
+  private handleArrowClicks(
     key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
     fourNodes: FourNodes,
   ): FourNodes {

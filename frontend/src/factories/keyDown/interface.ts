@@ -1,3 +1,5 @@
+import { KeyboardEvents } from "../../constents";
+
 export type FourNodes = {
   topLeft: `${string}-${string}`;
   bottomLeft: `${string}-${string}`;
@@ -6,8 +8,11 @@ export type FourNodes = {
   activeCell: `${string}-${string}`;
 };
 
+type keyDownReturnType = IUserInteraction[""]
+
 export interface IUserInteraction {
-  // handleKeyDown(keyDown: KeyboardEvents): IUserInteraction["handleArrowClicks"];
+  handleControlledKeyDown(keyDown: KeyboardEvents): ;
+  handleKeyDown(keyDown: KeyboardEvents): IUserInteraction["handleArrowClicks"];
   handleShiftArrowClicks(
     key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
     fourNodes: FourNodes,

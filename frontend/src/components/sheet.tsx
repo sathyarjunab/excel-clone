@@ -24,6 +24,7 @@ import {
   SAVE_DEBOUNCE_MS,
   FETCH_DEBOUNCE_MS,
   Y_AXIS_WIDTH,
+  controlledKeys,
 } from "../constents";
 import { clientSheet } from "../types/book";
 import { clientDbSource } from "../factories/registory/clientDb";
@@ -191,6 +192,7 @@ export default function Sheet() {
 
   const handleKeyDown = useCallback(
     (keyDown: KeyboardEvent) => {
+      if (!controlledKeys.includes(keyDown.key)) return;
       const UserInteractionServiceInstance = new UserInteractionService();
       if (keyDown.key === "Enter") {
         if (saveTimer.current) clearTimeout(saveTimer.current);
