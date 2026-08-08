@@ -57,7 +57,7 @@ const Y_AXIS_WIDTH = 40;
 const FETCH_DEBOUNCE_MS = 200;
 const SAVE_DEBOUNCE_MS = 2000;
 
-const controlledKeys = [...cellMovementKeys, "Enter", "Escape"] as const;
+const controlledKeys = [...cellMovementKeys, "Enter", "Escape", "Tab"];
 
 export {
   X_MAX_RANGE,

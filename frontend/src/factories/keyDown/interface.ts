@@ -1,5 +1,3 @@
-import { KeyboardEvents } from "../../constents";
-
 export type FourNodes = {
   topLeft: `${string}-${string}`;
   bottomLeft: `${string}-${string}`;
@@ -8,11 +6,20 @@ export type FourNodes = {
   activeCell: `${string}-${string}`;
 };
 
-type keyDownReturnType = IUserInteraction[""]
+type RemoveFirstParameter<F> = F extends (
+  first: any,
+  ...rest: infer R
+) => infer Ret
+  ? (...args: R) => Ret
+  : never;
+
+export type keyDownHandelingFunctions =
+  | RemoveFirstParameter<IUserInteraction["handleArrowClicks"]>
+  | RemoveFirstParameter<IUserInteraction["handleShiftArrowClicks"]>
+  | (() => void);
 
 export interface IUserInteraction {
-  handleControlledKeyDown(keyDown: KeyboardEvents): ;
-  handleKeyDown(keyDown: KeyboardEvents): IUserInteraction["handleArrowClicks"];
+  handleKeyDown(keyDown: KeyboardEvent, callBackeFunction: () => {}): void;
   handleShiftArrowClicks(
     key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
     fourNodes: FourNodes,

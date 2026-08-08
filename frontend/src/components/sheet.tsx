@@ -9,27 +9,23 @@ import {
   useRef,
   useState,
 } from "react";
-import { UserContext } from "../context";
-import "../scss/sheet.scss";
-import { numberToAlphabet, typeComparer } from "../util/sheet";
-import { Grid } from "./grid";
-import { Gatherer } from "../factories/gatherer/service";
 import {
-  DEFAULT_CLIENT_DB_SERVICE_TYPE,
-  DATASOURCE_TYPE,
-  cellMovementKeysType,
-  cellMovementKeys,
   CELL_HEIGHT,
   CELL_WIDTH,
-  SAVE_DEBOUNCE_MS,
+  DATASOURCE_TYPE,
+  DEFAULT_CLIENT_DB_SERVICE_TYPE,
   FETCH_DEBOUNCE_MS,
+  SAVE_DEBOUNCE_MS,
   Y_AXIS_WIDTH,
-  controlledKeys,
 } from "../constents";
-import { clientSheet } from "../types/book";
-import { clientDbSource } from "../factories/registory/clientDb";
+import { UserContext } from "../context";
+import { Gatherer } from "../factories/gatherer/service";
 import { UserInteractionService } from "../factories/keyDown/services";
-import { FourNodes } from "../factories/keyDown/interface";
+import { clientDbSource } from "../factories/registory/clientDb";
+import "../scss/sheet.scss";
+import { clientSheet } from "../types/book";
+import { numberToAlphabet } from "../util/sheet";
+import { Grid } from "./grid";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -51,8 +47,19 @@ const clientDbInstancePromise =
   clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
 
 export default function Sheet() {
-  const { saveSheets, sheetData, setSheetData, activeSheetName, selectedCell } =
-    useContext(UserContext)!;
+  const {
+    saveSheets,
+    sheetData,
+    setSheetData,
+    activeSheetName,
+    selectedCell,
+    setFourNodes,
+    fourNodes,
+    setLoading,
+    loading,
+    saveTimer,
+    activeBookIndx,
+  } = useContext(UserContext)!;
 
   const [rowsAndCol, setRowsAndCol] = useState<{
     rows: number;
@@ -63,8 +70,6 @@ export default function Sheet() {
   });
   const [clickedCells, setClickedCells] = useState<SheetProps>();
   const [scrollPosition, setScrollPosition] = useState({ top: 0, left: 0 });
-  const [loading, setLoading] = useState(false);
-  const [fourNodes, setFourNodes] = useState<FourNodes>();
   // #5: the visible viewport size is measured, not frozen at module load, so
   // the grid recalculates its visible range when the window resizes.
   const [viewportSize, setViewportSize] = useState({
@@ -76,7 +81,15 @@ export default function Sheet() {
   // #4: two independent debounces, each in a ref so they survive re-renders
   // without being state (a timer in state re-renders on every scroll).
   const fetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardHandler = useRef(
+    new UserInteractionService(
+      setFourNodes,
+      setLoading,
+      saveSheets,
+      saveTimer,
+      setClickedCells,
+    ),
+  );
 
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
 
@@ -192,55 +205,29 @@ export default function Sheet() {
 
   const handleKeyDown = useCallback(
     (keyDown: KeyboardEvent) => {
-      if (!controlledKeys.includes(keyDown.key)) return;
-      const UserInteractionServiceInstance = new UserInteractionService();
-      if (keyDown.key === "Enter") {
-        if (saveTimer.current) clearTimeout(saveTimer.current);
-        saveSheets(setLoading);
-        setFourNodes((prev) => {
-          if (!prev) return prev;
-          return UserInteractionServiceInstance.handleArrowClicks(
-            // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-            "ArrowDown",
-            prev,
-          );
-        });
-      } else if (
-        typeComparer<cellMovementKeysType>(
-          keyDown.key,
-          cellMovementKeys.map((k) => k),
-        ) &&
-        fourNodes
-      ) {
-        setFourNodes((prev) => {
-          if (!prev) return prev;
-          if (!keyDown.shiftKey) {
-            return UserInteractionServiceInstance.handleArrowClicks(
-              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-              keyDown.key as cellMovementKeysType,
-              prev,
-            );
-          } else {
-            return UserInteractionServiceInstance.handleShiftArrowClicks(
-              // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-              keyDown.key as cellMovementKeysType,
-              prev,
-            );
-          }
-        });
-      }
-      setClickedCells((prev) => {
-        if (!prev || !prev.currentClickedCell) return prev;
-        const [rowStr, colStr] = prev.currentClickedCell.split("-");
-        return {
-          prevClickedCell: prev.currentClickedCell,
-          currentClickedCell: `${Number(rowStr) + 1}-${colStr}`,
-          makeInputActive: false,
-        };
-      });
+      keyboardHandler.current.handleKeyDown(keyDown);
+      // setClickedCells((prev) => {
+      //   if (!prev || !prev.currentClickedCell) return prev;
+      //   const [rowStr, colStr] = prev.currentClickedCell.split("-");
+      //   return {
+      //     prevClickedCell: prev.currentClickedCell,
+      //     currentClickedCell: `${Number(rowStr) + 1}-${colStr}`,
+      //     makeInputActive: false,
+      //   };
+      // });
     },
     [fourNodes],
   );
+
+  useEffect(() => {
+    keyboardHandler.current = new UserInteractionService(
+      setFourNodes,
+      setLoading,
+      saveSheets,
+      saveTimer,
+      setClickedCells,
+    );
+  }, [activeBookIndx]);
 
   const xAxisStyle = useMemo<CSSProperties>(
     () => ({

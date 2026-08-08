@@ -1,17 +1,22 @@
-import React, {
+import {
   createContext,
   Dispatch,
+  MutableRefObject,
   ReactNode,
+  SetStateAction,
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { DATASOURCE_TYPE, DEFAULT_CLIENT_DB_SERVICE_TYPE } from "./constents";
+import { FourNodes } from "./factories/keyDown/interface";
 import { clientDbSource } from "./factories/registory/clientDb";
 import { dataSource } from "./factories/registory/dataSource";
 import { clientSheet, Sheet, Workbook } from "./types/book";
 
 const EMPTY_SHEET: clientSheet = { cellData: {}, dirtyCells: {} };
+type SetFunctionType<K> = Dispatch<SetStateAction<K>>;
 
 export const UserContext = createContext<{
   user: null | Record<string, string>;
@@ -21,14 +26,19 @@ export const UserContext = createContext<{
   activeSheet: Sheet[] | null;
   sheetData: clientSheet;
   selectedCell: `${string}-${string}` | null;
-  setActiveBookIndx: Dispatch<React.SetStateAction<string | null>>;
-  setUser: Dispatch<React.SetStateAction<null>>;
-  setBooks: Dispatch<React.SetStateAction<Workbook[] | null>>;
-  setActiveSheetName: Dispatch<React.SetStateAction<string>>;
-  setActiveSheet: Dispatch<React.SetStateAction<Sheet[] | null>>;
-  saveSheets: (loaderSetter: Dispatch<React.SetStateAction<boolean>>) => void;
-  setSheetData: Dispatch<React.SetStateAction<clientSheet>>;
-  setSelectedCell: Dispatch<React.SetStateAction<`${string}-${string}` | null>>;
+  fourNodes: FourNodes | null;
+  loading: boolean;
+  setActiveBookIndx: SetFunctionType<string | null>;
+  setUser: SetFunctionType<null>;
+  setBooks: SetFunctionType<Workbook[] | null>;
+  setActiveSheetName: SetFunctionType<string>;
+  setActiveSheet: SetFunctionType<Sheet[] | null>;
+  saveSheets: (loaderSetter: SetFunctionType<boolean>) => void;
+  setSheetData: SetFunctionType<clientSheet>;
+  setSelectedCell: SetFunctionType<`${string}-${string}` | null>;
+  setFourNodes: SetFunctionType<FourNodes | null>;
+  setLoading: SetFunctionType<boolean>;
+  saveTimer: MutableRefObject<NodeJS.Timeout | null>;
 } | null>(null);
 
 const clientDbInstancePromise =
@@ -44,20 +54,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [selectedCell, setSelectedCell] = useState<
     `${string}-${string}` | null
   >(null);
+  const [fourNodes, setFourNodes] = useState<FourNodes | null>(null);
+  const [loading, setLoading] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cell data is real React state now — mutating it re-renders the grid the
   // normal way, so there is no more `ref + version++` counter to force paints.
   const [sheetData, setSheetData] = useState<clientSheet>(EMPTY_SHEET);
 
   const saveSheets = useCallback(
-    async (loaderSetter: Dispatch<React.SetStateAction<boolean>>) => {
-      loaderSetter(true);
+    async (loaderSetter: SetFunctionType<boolean>) => {
       const dirtyCells = await (await clientDbInstancePromise).getDirtyCells();
 
       if (Object.keys(dirtyCells).length === 0) {
         loaderSetter(false);
         return;
       }
+      loaderSetter(true);
 
       await (
         await dataSource[DATASOURCE_TYPE]()
@@ -84,6 +97,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       activeSheet,
       sheetData,
       selectedCell,
+      fourNodes,
+      loading,
       setUser,
       setBooks,
       setActiveSheetName,
@@ -92,6 +107,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setActiveSheet,
       setSheetData,
       setSelectedCell,
+      setFourNodes,
+      setLoading,
+      saveTimer,
     }),
     [
       user,
@@ -101,7 +119,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       activeSheet,
       sheetData,
       selectedCell,
-      saveSheets,
+      fourNodes,
     ],
   );
 
