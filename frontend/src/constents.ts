@@ -59,6 +59,13 @@ const SAVE_DEBOUNCE_MS = 2000;
 
 const controlledKeys = [...cellMovementKeys, "Enter", "Escape", "Tab"];
 
+const movementWeightage: Record<cellMovementKeysType, number> = {
+  ArrowUp: 1,
+  ArrowDown: -1,
+  ArrowRight: 1,
+  ArrowLeft: -1,
+};
+
 export {
   X_MAX_RANGE,
   Y_MAX_RANGE,
@@ -73,4 +80,5 @@ export {
   FETCH_DEBOUNCE_MS,
   SAVE_DEBOUNCE_MS,
   controlledKeys,
+  movementWeightage,
 };

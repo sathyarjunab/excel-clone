@@ -3,6 +3,7 @@ import {
   cellMovementKeys,
   cellMovementKeysType,
   controlledKeys,
+  movementWeightage,
 } from "../../constents";
 import { typeComparer } from "../../util/sheet";
 import { FourNodes, IUserInteraction } from "./interface";
@@ -28,9 +29,16 @@ export class UserInteractionService implements IUserInteraction {
       });
       return;
     }
+    keyDown.preventDefault();
+
+    let colMover = 0;
+    let rowMover = 0;
+
+    const key = keyDown.key;
+
     if (
       typeComparer<cellMovementKeysType>(
-        keyDown.key,
+        key,
         cellMovementKeys.map((k) => k),
       )
     ) {
@@ -39,30 +47,52 @@ export class UserInteractionService implements IUserInteraction {
         if (!keyDown.shiftKey) {
           return this.handleArrowClicks(
             // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-            keyDown.key as cellMovementKeysType,
+            key as cellMovementKeysType,
             prev,
           );
         } else {
           return this.handleShiftArrowClicks(
             // since the narrowing is done in this context, we need to do "as cellMovementKeysType"
-            keyDown.key as cellMovementKeysType,
+            key as cellMovementKeysType,
             prev,
           );
         }
       });
-    } else if (keyDown.key === "Enter") {
+
+      this.setClickedCells((prev) => {
+        if (!prev || !prev.currentClickedCell) return prev;
+
+        let rowInc = 0;
+        let colInc = 0;
+
+        if (key === "ArrowDown" || key === "ArrowUp") {
+          rowInc = movementWeightage[key];
+        } else {
+          colInc = movementWeightage[key];
+        }
+
+        const [row, col] = prev.currentClickedCell.split("-");
+
+        return {
+          prevClickedCell: prev.currentClickedCell,
+          currentClickedCell: `${Number(row) + rowInc}-${Number(col) + colInc}`,
+          makeInputActive: false,
+        };
+      });
+    } else if (key === "Enter") {
       if (this.saveTimer.current) clearTimeout(this.saveTimer.current);
       this.saveSheets(this.setLoading);
       this.setFourNodes((prev) => {
         if (!prev) return prev;
         return this.handleArrowClicks("ArrowDown", prev);
       });
-    } else if (keyDown.key === "Tab") {
-      keyDown.preventDefault();
+      rowMover += 1;
+    } else if (key === "Tab") {
       this.setFourNodes((prev) => {
         if (!prev) return prev;
         return this.handleArrowClicks("ArrowRight", prev);
       });
+      colMover += 1;
     }
 
     this.setClickedCells((prev) => {
@@ -70,7 +100,7 @@ export class UserInteractionService implements IUserInteraction {
       const [rowStr, colStr] = prev.currentClickedCell.split("-");
       return {
         prevClickedCell: prev.currentClickedCell,
-        currentClickedCell: `${Number(rowStr) + 1}-${colStr}`,
+        currentClickedCell: `${Number(rowStr) + rowMover}-${Number(colStr) + colMover}`,
         makeInputActive: false,
       };
     });
@@ -87,7 +117,7 @@ export class UserInteractionService implements IUserInteraction {
       case "ArrowRight":
         const [topRightX, topRightY] = fourNodes["topRight"].split("-");
         const columnIncrementedValue =
-          Number(topRightY) + ("ArrowRight" === key ? 1 : -1);
+          Number(topRightY) + movementWeightage[key];
         if (columnIncrementedValue <= 0) return fourNodes;
         fourNodes = {
           ...fourNodes,
@@ -98,8 +128,7 @@ export class UserInteractionService implements IUserInteraction {
       case "ArrowUp":
       case "ArrowDown":
         const [_bottomLeftX, bottomLeftY] = fourNodes["bottomLeft"].split("-");
-        const rowIncrementor =
-          Number(bottomRightX) + ("ArrowDown" === key ? 1 : -1);
+        const rowIncrementor = Number(bottomRightX) + movementWeightage[key];
         if (rowIncrementor <= 0) return fourNodes;
         fourNodes = {
           ...fourNodes,

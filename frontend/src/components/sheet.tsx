@@ -206,15 +206,6 @@ export default function Sheet() {
   const handleKeyDown = useCallback(
     (keyDown: KeyboardEvent) => {
       keyboardHandler.current.handleKeyDown(keyDown);
-      // setClickedCells((prev) => {
-      //   if (!prev || !prev.currentClickedCell) return prev;
-      //   const [rowStr, colStr] = prev.currentClickedCell.split("-");
-      //   return {
-      //     prevClickedCell: prev.currentClickedCell,
-      //     currentClickedCell: `${Number(rowStr) + 1}-${colStr}`,
-      //     makeInputActive: false,
-      //   };
-      // });
     },
     [fourNodes],
   );
