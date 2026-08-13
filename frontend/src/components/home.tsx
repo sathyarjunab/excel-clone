@@ -1,9 +1,9 @@
-import { useContext, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { DATASOURCE_TYPE } from "../constents";
-import { UserContext } from "../context";
-import { dataSource } from "../factories/registory/dataSource";
+import { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { DATASOURCE_TYPE } from '../constents';
+import { UserContext } from '../context';
+import { dataSource } from '../factories/registory/dataSource';
 
 export default function Home() {
   const { books, setBooks, setActiveBookIndx } = useContext(UserContext)!;
@@ -15,7 +15,7 @@ export default function Home() {
       if (resp.ok) {
         setBooks(resp.data);
       } else {
-        toast.error("Something went wrong");
+        toast.error('Something went wrong');
       }
     }
 
@@ -53,11 +53,11 @@ export default function Home() {
             {books.map((book) => (
               <article key={book.id} className="workbook-card">
                 <div>
-                  <strong>{book.bookName || "Untitled workbook"}</strong>
+                  <strong>{book.bookName || 'Untitled workbook'}</strong>
                   <p>
                     {(book.sheets ?? []).length
                       ? `${(book.sheets ?? []).length} sheets`
-                      : "Spreadsheet workbook"}
+                      : 'Spreadsheet workbook'}
                   </p>
                 </div>
                 <span

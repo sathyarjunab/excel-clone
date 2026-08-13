@@ -28,4 +28,5 @@ export interface IUserInteraction {
     key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
     fourNodes: FourNodes,
   ): FourNodes;
+  handleCopy(): void;
 }

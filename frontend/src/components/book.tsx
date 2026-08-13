@@ -1,12 +1,12 @@
-import { Plus, Trash2, X } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { toast } from "sonner";
-import { DATASOURCE_TYPE, DEFAULT_CLIENT_DB_SERVICE_TYPE } from "../constents";
-import { UserContext } from "../context";
-import { clientDbSource } from "../factories/registory/clientDb";
-import { dataSource } from "../factories/registory/dataSource";
-import Sheet from "./sheet";
+import { Plus, Trash2, X } from 'lucide-react';
+import { useContext, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { DATASOURCE_TYPE, DEFAULT_CLIENT_DB_SERVICE_TYPE } from '../constents';
+import { UserContext } from '../context';
+import { clientDbSource } from '../factories/registory/clientDb';
+import { dataSource } from '../factories/registory/dataSource';
+import Sheet from './sheet';
 
 export default function Book() {
   const { activeSheetName, setActiveSheetName, setActiveBookIndx } =
@@ -16,7 +16,7 @@ export default function Book() {
   const [sheetNames, setSheetNames] =
     useState<{ sheetNames: string; id: string }[]>();
   const [showCreateModule, setShowCreateModule] = useState<boolean>(false);
-  const [newSheetName, setNewSheetName] = useState<string>("");
+  const [newSheetName, setNewSheetName] = useState<string>('');
   const [sheetToDelete, setSheetToDelete] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,11 +31,11 @@ export default function Book() {
     ).getSheetNames(bookId!);
 
     if (!data || data.length === 0) {
-      data = [{ sheetNames: "New Sheet", id: "" }];
+      data = [{ sheetNames: 'New Sheet', id: '' }];
     }
 
     setSheetNames(data);
-    setActiveSheetName(data[0]?.sheetNames ?? "New Sheet");
+    setActiveSheetName(data[0]?.sheetNames ?? 'New Sheet');
   }
 
   async function handleNewSheetCreate() {
@@ -46,25 +46,25 @@ export default function Book() {
         await clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
 
       await dataSourceInstance.saveSheets({
-        dirtyCells: { "0-0": { content: "", style: {} } },
+        dirtyCells: { '0-0': { content: '', style: {} } },
         name: newSheetName,
         bookId: bookId ?? null,
       });
 
       if (!bookId || !activeSheetName) {
         toast.error(
-          !bookId ? "Book id not found" : "Sheet name is not present",
+          !bookId ? 'Book id not found' : 'Sheet name is not present',
         );
         return;
       }
 
       await clientDataSource.saveChunk([
         {
-          id: "string",
-          data: { "0-0": { content: "", style: {} } },
+          id: 'string',
+          data: { '0-0': { content: '', style: {} } },
           sheetName: activeSheetName,
           chunksCount: 1,
-          range: "500-500",
+          range: '500-500',
           bookId: bookId,
         },
       ]);
@@ -72,9 +72,9 @@ export default function Book() {
       fetchSheetNameAndSheet();
     } catch (err) {
       if (err instanceof Error) {
-        toast.error("Failed to create sheet: " + err.message);
+        toast.error('Failed to create sheet: ' + err.message);
       }
-      toast.error("Failed to create sheet: Unknown error");
+      toast.error('Failed to create sheet: Unknown error');
     }
   }
 
@@ -93,8 +93,8 @@ export default function Book() {
       await removeSheet(sheetToDelete);
     } catch (err) {
       toast.error(
-        "Failed to delete sheet: " +
-          (err instanceof Error ? err.message : "Unknown error"),
+        'Failed to delete sheet: ' +
+          (err instanceof Error ? err.message : 'Unknown error'),
       );
     } finally {
       setSheetToDelete(null);
@@ -114,7 +114,7 @@ export default function Book() {
             <div
               key={sheet.id || sheet.sheetNames}
               className={`sheet-tab ${
-                activeSheetName === sheet.sheetNames ? "active" : ""
+                activeSheetName === sheet.sheetNames ? 'active' : ''
               }`}
             >
               <button
@@ -144,7 +144,7 @@ export default function Book() {
         <div className="sheet-add">
           <button
             type="button"
-            className={`sheet-add-btn ${showCreateModule ? "active" : ""}`}
+            className={`sheet-add-btn ${showCreateModule ? 'active' : ''}`}
             onClick={() => setShowCreateModule((prev) => !prev)}
             aria-label="Create new sheet"
             title="Create new sheet"
@@ -175,7 +175,7 @@ export default function Book() {
                   type="button"
                   className="sheet-add-cancel"
                   onClick={() => {
-                    setNewSheetName("");
+                    setNewSheetName('');
                     setShowCreateModule(false);
                   }}
                 >

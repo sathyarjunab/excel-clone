@@ -1,13 +1,14 @@
-import { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import {
   cellMovementKeys,
   cellMovementKeysType,
   controlledKeys,
   movementWeightage,
-} from "../../constents";
-import { typeComparer } from "../../util/sheet";
-import { FourNodes, IUserInteraction } from "./interface";
-import { SheetProps } from "../../components/sheet";
+} from '../../constents';
+import { stabaliseFourNode, typeComparer } from '../../util/sheet';
+import { FourNodes, IUserInteraction } from './interface';
+import { SheetProps } from '../../components/sheet';
+import { clientSheet } from '../../types/book';
 
 export class UserInteractionService implements IUserInteraction {
   constructor(
@@ -16,9 +17,11 @@ export class UserInteractionService implements IUserInteraction {
     public saveSheets: (setLoading: Dispatch<SetStateAction<boolean>>) => void,
     public saveTimer: MutableRefObject<NodeJS.Timeout | null>,
     public setClickedCells: Dispatch<SetStateAction<SheetProps | undefined>>,
+    public sheetData: clientSheet,
+    public fourNodes: FourNodes | null,
   ) {}
 
-  public handleKeyDown(keyDown: KeyboardEvent) {
+  public async handleKeyDown(keyDown: KeyboardEvent) {
     if (!controlledKeys.includes(keyDown.key)) {
       this.setClickedCells((prev) => {
         if (!prev) return prev;
@@ -65,13 +68,13 @@ export class UserInteractionService implements IUserInteraction {
         let rowInc = 0;
         let colInc = 0;
 
-        if (key === "ArrowDown" || key === "ArrowUp") {
+        if (key === 'ArrowDown' || key === 'ArrowUp') {
           rowInc = movementWeightage[key];
         } else {
           colInc = movementWeightage[key];
         }
 
-        const [row, col] = prev.currentClickedCell.split("-");
+        const [row, col] = prev.currentClickedCell.split('-');
 
         return {
           prevClickedCell: prev.currentClickedCell,
@@ -79,25 +82,29 @@ export class UserInteractionService implements IUserInteraction {
           makeInputActive: false,
         };
       });
-    } else if (key === "Enter") {
+    } else if (key === 'Enter') {
       if (this.saveTimer.current) clearTimeout(this.saveTimer.current);
       this.saveSheets(this.setLoading);
       this.setFourNodes((prev) => {
         if (!prev) return prev;
-        return this.handleArrowClicks("ArrowDown", prev);
+        return this.handleArrowClicks('ArrowDown', prev);
       });
       rowMover += 1;
-    } else if (key === "Tab") {
+    } else if (key === 'Tab') {
       this.setFourNodes((prev) => {
         if (!prev) return prev;
-        return this.handleArrowClicks("ArrowRight", prev);
+        return this.handleArrowClicks('ArrowRight', prev);
       });
       colMover += 1;
+    } else if (keyDown.ctrlKey && key === 'c') {
+      const copyText = this.handleCopy();
+      await navigator.clipboard.writeText(copyText);
     }
 
+    if (rowMover === 0 && colMover === 0) return;
     this.setClickedCells((prev) => {
       if (!prev || !prev.currentClickedCell) return prev;
-      const [rowStr, colStr] = prev.currentClickedCell.split("-");
+      const [rowStr, colStr] = prev.currentClickedCell.split('-');
       return {
         prevClickedCell: prev.currentClickedCell,
         currentClickedCell: `${Number(rowStr) + rowMover}-${Number(colStr) + colMover}`,
@@ -107,15 +114,15 @@ export class UserInteractionService implements IUserInteraction {
   }
 
   public handleShiftArrowClicks(
-    key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+    key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown',
     fourNodes: FourNodes,
   ) {
-    const [bottomRightX, bottomRightY] = fourNodes["bottomRight"].split("-");
+    const [bottomRightX, bottomRightY] = fourNodes['bottomRight'].split('-');
     // In the bellow switch case it is confusing when the row or the column come backs to zero and go on reducing the value then the top node becomes the bottom node and the bottom node becomes the top node as per the naming convention.
     switch (key) {
-      case "ArrowLeft":
-      case "ArrowRight":
-        const [topRightX, topRightY] = fourNodes["topRight"].split("-");
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        const [topRightX, topRightY] = fourNodes['topRight'].split('-');
         const columnIncrementedValue =
           Number(topRightY) + movementWeightage[key];
         if (columnIncrementedValue <= 0) return fourNodes;
@@ -125,9 +132,9 @@ export class UserInteractionService implements IUserInteraction {
           bottomRight: `${bottomRightX}-${columnIncrementedValue}`,
         };
         break;
-      case "ArrowUp":
-      case "ArrowDown":
-        const [_bottomLeftX, bottomLeftY] = fourNodes["bottomLeft"].split("-");
+      case 'ArrowUp':
+      case 'ArrowDown':
+        const [_bottomLeftX, bottomLeftY] = fourNodes['bottomLeft'].split('-');
         const rowIncrementor = Number(bottomRightX) + movementWeightage[key];
         if (rowIncrementor <= 0) return fourNodes;
         fourNodes = {
@@ -137,18 +144,18 @@ export class UserInteractionService implements IUserInteraction {
         };
         break;
     }
-    return fourNodes;
+    return stabaliseFourNode(fourNodes);
   }
 
   public handleArrowClicks(
-    key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+    key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown',
     fourNodes: FourNodes,
   ) {
-    const [activeCellX, activeCellY] = fourNodes["activeCell"].split("-");
+    const [activeCellX, activeCellY] = fourNodes['activeCell'].split('-');
     const rowChangingDirection =
-      "ArrowDown" === key ? 1 : "ArrowUp" === key ? -1 : 0;
+      'ArrowDown' === key ? 1 : 'ArrowUp' === key ? -1 : 0;
     const columnChangingDirection =
-      "ArrowRight" === key ? 1 : "ArrowLeft" === key ? -1 : 0;
+      'ArrowRight' === key ? 1 : 'ArrowLeft' === key ? -1 : 0;
 
     fourNodes = {
       bottomLeft: `${Number(activeCellX) + rowChangingDirection}-${Number(activeCellY) + columnChangingDirection}`,
@@ -157,6 +164,35 @@ export class UserInteractionService implements IUserInteraction {
       topRight: `${Number(activeCellX) + rowChangingDirection}-${Number(activeCellY) + columnChangingDirection}`,
       activeCell: `${Number(activeCellX) + rowChangingDirection}-${Number(activeCellY) + columnChangingDirection}`,
     };
-    return fourNodes;
+    return stabaliseFourNode(fourNodes);
+  }
+
+  public handleCopy(): string {
+    if (!this.fourNodes) return '';
+    let [row, column] = this.fourNodes.topLeft
+      .split('-')
+      .map((coOrd) => Number(coOrd));
+    const [endRow] = this.fourNodes.bottomLeft
+      .split('-')
+      .map((coOrd) => Number(coOrd));
+    const [_startRow, endColumn] = this.fourNodes.topRight
+      .split('-')
+      .map((coOrd) => Number(coOrd));
+
+    let rowLines = '';
+    column = column ?? 0;
+    row = row ?? 0;
+    while (row !== endRow) {
+      while (column !== endColumn) {
+        const textContent =
+          this.sheetData.cellData[`${row}-${column}`]?.content ?? '';
+        rowLines += textContent + '\t';
+        column++;
+      }
+      rowLines += '\n';
+      row++;
+      column = 0;
+    }
+    return rowLines;
   }
 }
