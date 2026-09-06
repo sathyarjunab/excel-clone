@@ -10,10 +10,10 @@ import {
   useState,
 } from "react";
 import { DATASOURCE_TYPE, DEFAULT_CLIENT_DB_SERVICE_TYPE } from "./constents";
-import { FourNodes } from "./factories/keyDown/interface";
 import { clientDbSource } from "./factories/registory/clientDb";
 import { dataSource } from "./factories/registory/dataSource";
 import { clientSheet, Sheet, Workbook } from "./types/book";
+import { FourNodes } from "./types/common";
 
 const EMPTY_SHEET: clientSheet = { cellData: {}, dirtyCells: {} };
 type SetFunctionType<K> = Dispatch<SetStateAction<K>>;
@@ -28,6 +28,7 @@ export const UserContext = createContext<{
   selectedCell: `${string}-${string}` | null;
   fourNodes: FourNodes | null;
   loading: boolean;
+  moverCell: `${string}-${string}` | null;
   setActiveBookIndx: SetFunctionType<string | null>;
   setUser: SetFunctionType<null>;
   setBooks: SetFunctionType<Workbook[] | null>;
@@ -39,6 +40,7 @@ export const UserContext = createContext<{
   setFourNodes: SetFunctionType<FourNodes | null>;
   setLoading: SetFunctionType<boolean>;
   saveTimer: MutableRefObject<NodeJS.Timeout | null>;
+  setMoverCell: SetFunctionType<`${string}-${string}` | null>;
 } | null>(null);
 
 const clientDbInstancePromise =
@@ -61,6 +63,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // Cell data is real React state now — mutating it re-renders the grid the
   // normal way, so there is no more `ref + version++` counter to force paints.
   const [sheetData, setSheetData] = useState<clientSheet>(EMPTY_SHEET);
+  const [moverCell, setMoverCell] = useState<`${string}-${string}` | null>(
+    null,
+  );
 
   const saveSheets = useCallback(
     async (loaderSetter: SetFunctionType<boolean>) => {
@@ -99,6 +104,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       selectedCell,
       fourNodes,
       loading,
+      moverCell,
       setUser,
       setBooks,
       setActiveSheetName,
@@ -109,6 +115,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setSelectedCell,
       setFourNodes,
       setLoading,
+      setMoverCell,
       saveTimer,
     }),
     [

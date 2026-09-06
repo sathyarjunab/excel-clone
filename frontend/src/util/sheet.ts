@@ -1,5 +1,5 @@
 import { ALPHABETS, X_MAX_RANGE, Y_MAX_RANGE } from "../constents";
-import { FourNodes } from "../factories/keyDown/interface";
+import { FourNodes } from "../types/common";
 
 export function numberToAlphabet(num: number, result: string): string {
   if (!num || num <= 0) return "";
@@ -24,7 +24,7 @@ export function typeComparer<T>(key: any, values: string[]): key is T {
   return values.includes(key);
 }
 
-export function stabaliseFourNode(fourNodes: FourNodes): FourNodes {
+export function stabilizeFourNode(fourNodes: FourNodes): FourNodes {
   const [p1x, p1y] = fourNodes.topLeft.split("-").map(Number);
   const [p2x, p2y] = fourNodes.topRight.split("-").map(Number);
   const [p3x, p3y] = fourNodes.bottomLeft.split("-").map(Number);

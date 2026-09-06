@@ -1,7 +1,7 @@
-import React, { CSSProperties, useContext } from 'react';
-import './../scss/sheet.scss';
-import { SheetProps } from './sheet';
-import { UserContext } from '../context';
+import React, { CSSProperties, useContext } from "react";
+import "./../scss/sheet.scss";
+import { SheetProps } from "./sheet";
+import { UserContext } from "../context";
 
 function child({
   handleDoubleClick,
@@ -27,7 +27,7 @@ function child({
           className="grid-cell"
           style={customStyle}
           autoFocus={true}
-          defaultValue={value ?? ''}
+          defaultValue={value ?? ""}
           onChange={handleDataEntry}
         />
       ) : (

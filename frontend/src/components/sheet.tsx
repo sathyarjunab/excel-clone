@@ -8,7 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
-} from 'react';
+} from "react";
 import {
   CELL_HEIGHT,
   CELL_WIDTH,
@@ -17,15 +17,16 @@ import {
   FETCH_DEBOUNCE_MS,
   SAVE_DEBOUNCE_MS,
   Y_AXIS_WIDTH,
-} from '../constents';
-import { UserContext } from '../context';
-import { Gatherer } from '../factories/gatherer/service';
-import { UserInteractionService } from '../factories/keyDown/services';
-import { clientDbSource } from '../factories/registory/clientDb';
-import '../scss/sheet.scss';
-import { clientSheet } from '../types/book';
-import { numberToAlphabet } from '../util/sheet';
-import { Grid } from './grid';
+} from "../constents";
+import { UserContext } from "../context";
+import { Gatherer } from "../factories/gatherer/service";
+import { createKeyDownHandlerMap } from "../services/handlers";
+import { clientDbSource } from "../factories/registory/clientDb";
+import { commonService } from "../services/common";
+import "../scss/sheet.scss";
+import { clientSheet } from "../types/book";
+import { numberToAlphabet } from "../util/sheet";
+import { Grid } from "./grid";
 
 export type SheetProps = {
   prevClickedCell: `${string}-${string}` | undefined;
@@ -35,8 +36,8 @@ export type SheetProps = {
 
 // Fallback viewport size before the ResizeObserver has measured the element.
 const FALLBACK_HEIGHT =
-  typeof window !== 'undefined' ? window.innerHeight : 1000;
-const FALLBACK_WIDTH = typeof window !== 'undefined' ? window.innerWidth : 1000;
+  typeof window !== "undefined" ? window.innerHeight : 1000;
+const FALLBACK_WIDTH = typeof window !== "undefined" ? window.innerWidth : 1000;
 
 const getYAxisWidth = (rowCount: number) => {
   const digits = Math.max(1, rowCount.toString().length);
@@ -58,7 +59,8 @@ export default function Sheet() {
     setLoading,
     loading,
     saveTimer,
-    activeBookIndx,
+    moverCell,
+    setMoverCell,
   } = useContext(UserContext)!;
 
   const [rowsAndCol, setRowsAndCol] = useState<{
@@ -81,17 +83,6 @@ export default function Sheet() {
   // #4: two independent debounces, each in a ref so they survive re-renders
   // without being state (a timer in state re-renders on every scroll).
   const fetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const keyboardHandler = useRef(
-    new UserInteractionService(
-      setFourNodes,
-      setLoading,
-      saveSheets,
-      saveTimer,
-      setClickedCells,
-      sheetData,
-      fourNodes,
-    ),
-  );
 
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
 
@@ -129,7 +120,7 @@ export default function Sheet() {
       setLoading(true);
       try {
         const gatherer = new Gatherer(
-          activeSheetName ?? '',
+          activeSheetName ?? "",
           DEFAULT_CLIENT_DB_SERVICE_TYPE,
           DATASOURCE_TYPE,
         );
@@ -140,7 +131,7 @@ export default function Sheet() {
           topRow: startRow,
         });
 
-        let fetched: clientSheet['cellData'] = {};
+        let fetched: clientSheet["cellData"] = {};
         data?.forEach((sheet) => {
           fetched = { ...fetched, ...sheet.data };
         });
@@ -183,9 +174,9 @@ export default function Sheet() {
 
       // #4: write through to the IDB chunk so scrolling away and back shows the
       // edit instead of the stale value cached on the first fetch.
-      const [rowStr, colStr] = currentClickedCell.split('-');
+      const [rowStr, colStr] = currentClickedCell.split("-");
       const gatherer = new Gatherer(
-        activeSheetName ?? '',
+        activeSheetName ?? "",
         DEFAULT_CLIENT_DB_SERVICE_TYPE,
         DATASOURCE_TYPE,
       );
@@ -207,41 +198,63 @@ export default function Sheet() {
 
   const handleKeyDown = useCallback(
     (keyDown: KeyboardEvent) => {
-      keyboardHandler.current.handleKeyDown(keyDown);
-    },
-    [fourNodes],
-  );
+      const convertedKey = commonService.keyDownConvertor(keyDown);
+      const handlerMap = createKeyDownHandlerMap({
+        setFourNodes,
+        setClickedCells,
+        setLoading,
+        saveSheets,
+        saveTimer,
+        sheetData,
+        fourNodes,
+        moverCell,
+        setMoverCell,
+      });
+      const handler = handlerMap[convertedKey];
 
-  useEffect(() => {
-    keyboardHandler.current = new UserInteractionService(
-      setFourNodes,
-      setLoading,
+      // No handler for this key -> the user is typing into the cell.
+      if (!handler) {
+        setClickedCells((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            makeInputActive: true,
+          };
+        });
+        return;
+      }
+
+      handler(keyDown);
+    },
+    [
+      fourNodes,
+      sheetData,
       saveSheets,
       saveTimer,
+      setFourNodes,
       setClickedCells,
-      sheetData,
-      fourNodes,
-    );
-  }, [activeBookIndx, sheetData, fourNodes]);
+      setLoading,
+    ],
+  );
 
   const xAxisStyle = useMemo<CSSProperties>(
     () => ({
-      backgroundColor: '#F3F3F3',
-      justifyContent: 'center',
-      color: '#616174',
+      backgroundColor: "#F3F3F3",
+      justifyContent: "center",
+      color: "#616174",
       zIndex: 2,
     }),
     [],
   );
   const yAxisStyle = useMemo<CSSProperties>(
     () => ({
-      backgroundColor: '#F3F3F3',
+      backgroundColor: "#F3F3F3",
       width: `${yAxisWidth}px`,
-      justifyContent: 'end',
-      color: '#616174',
+      justifyContent: "end",
+      color: "#616174",
       zIndex: 2,
       paddingRight: 6,
-      textAlign: 'right',
+      textAlign: "right",
     }),
     [yAxisWidth],
   );
@@ -309,7 +322,7 @@ export default function Sheet() {
             height: `${CELL_HEIGHT}px`,
           }}
         >
-          {numberToAlphabet(y, '')}
+          {numberToAlphabet(y, "")}
         </div>,
       );
     }
@@ -364,7 +377,7 @@ export default function Sheet() {
       fourNodes.bottomLeft,
       fourNodes.bottomRight,
     ]) {
-      const [row, col] = corner.split('-').map(Number);
+      const [row, col] = corner.split("-").map(Number);
       if (row && row < minRow) minRow = row;
       if (row && row > maxRow) maxRow = row;
       if (col && col < minCol) minCol = col;
@@ -407,9 +420,9 @@ export default function Sheet() {
   }, []);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [handleKeyDown]);
 
@@ -422,7 +435,7 @@ export default function Sheet() {
       topRight: selectedCell,
       activeCell: selectedCell,
     });
-    const [x, y] = selectedCell.split('-').map(Number);
+    const [x, y] = selectedCell.split("-").map(Number);
     setClickedCells((prev) => ({
       prevClickedCell: prev?.currentClickedCell,
       currentClickedCell: `${x}-${y}`,
