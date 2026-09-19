@@ -87,3 +87,5 @@ export class IDB implements Icache {
     await tx.done;
   }
 }
+
+export const idbSingleton = new IDB();

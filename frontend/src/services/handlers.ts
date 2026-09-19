@@ -1,9 +1,16 @@
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { cellMovementKeysType, movementWeightage } from "../constents";
-import { stabilizeFourNode } from "../util/sheet";
 import { SheetProps } from "../components/sheet";
-import { clientSheet } from "../types/book";
+import {
+  cellMovementKeysType,
+  DATASOURCE_TYPE,
+  DEFAULT_CLIENT_DB_SERVICE_TYPE,
+  movementWeightage,
+} from "../constents";
+import { clientDbSource } from "../factories/registory/clientDb";
+import { clientSheet, Grid } from "../types/book";
 import { FourNodes } from "../types/common";
+import { stabilizeFourNode } from "../util/sheet";
+import { Gatherer } from "./gatherer/service";
 
 // Everything a key handler might need. The factory below hands each handler
 // only the specific pieces it uses, so the component owns the state/setters and
@@ -12,12 +19,14 @@ export type KeyDownHandlerDeps = {
   setFourNodes: Dispatch<SetStateAction<FourNodes | null>>;
   setClickedCells: Dispatch<SetStateAction<SheetProps | undefined>>;
   setLoading: Dispatch<SetStateAction<boolean>>;
+  setSheetData: Dispatch<SetStateAction<clientSheet>>;
   saveSheets: (setLoading: Dispatch<SetStateAction<boolean>>) => void;
   setMoverCell: Dispatch<SetStateAction<`${string}-${string}` | null>>;
   saveTimer: MutableRefObject<NodeJS.Timeout | null>;
   sheetData: clientSheet;
   fourNodes: FourNodes | null;
   moverCell: `${string}-${string}` | null;
+  activeSheetName: string | null;
 };
 
 export type KeyDownHandler = (keyDown: KeyboardEvent) => void;
@@ -122,9 +131,6 @@ export function handleCopy(
   return rowLines;
 }
 
-// ---- Per-key handlers: each takes only the pieces it needs, and each calls
-// keyDown.preventDefault() itself. ----
-
 export function handleArrowKey(
   keyDown: KeyboardEvent,
   key: cellMovementKeysType,
@@ -202,6 +208,92 @@ export async function handleCopyKey(
   await navigator.clipboard.writeText(copyText);
 }
 
+export async function handleCut(
+  fourNodes: FourNodes | null,
+  sheetData: clientSheet,
+  setSheetData: Dispatch<SetStateAction<clientSheet>>,
+  activeSheetName: string | null,
+  saveSheets: (setLoading: Dispatch<SetStateAction<boolean>>) => void,
+  setLoading: Dispatch<SetStateAction<boolean>>,
+): Promise<void> {
+  const clientDataSource =
+    await clientDbSource[DEFAULT_CLIENT_DB_SERVICE_TYPE]();
+  const dirtyCells: Record<`${string}-${string}`, Grid> = {};
+  if (!fourNodes) return;
+  const stableFourNodes = stabilizeFourNode(fourNodes);
+  let [row = 0, column = 0] = stableFourNodes.topLeft
+    .split("-")
+    .map((coOrd) => Number(coOrd));
+  const [endRow, startColumn] = stableFourNodes.bottomLeft
+    .split("-")
+    .map((coOrd) => Number(coOrd));
+  const [_startRow, endColumn] = stableFourNodes.topRight
+    .split("-")
+    .map((coOrd) => Number(coOrd));
+
+  let rowLines = "";
+  while (row <= endRow!) {
+    while (column <= endColumn!) {
+      if (!sheetData.cellData[`${row}-${column}`]) {
+        column++;
+        continue;
+      }
+      const textContent = sheetData.cellData[`${row}-${column}`]!.content ?? "";
+      rowLines += textContent + "\t";
+      dirtyCells[`${row}-${column}`] = {
+        ...sheetData.cellData[`${row}-${column}`]!,
+        content: "",
+      };
+      column++;
+    }
+    rowLines += "\n";
+    row++;
+    column = startColumn ?? 0;
+  }
+  setSheetData((prev) => {
+    return {
+      ...prev,
+      cellData: {
+        ...prev.cellData,
+        ...dirtyCells,
+      },
+      dirtyCells: {
+        ...prev.dirtyCells,
+        ...dirtyCells,
+      },
+    };
+  });
+  const prevDirtyCells = await clientDataSource.getDirtyCells();
+  await clientDataSource.saveDirtyCell({ ...prevDirtyCells, ...dirtyCells });
+  await navigator.clipboard.writeText(rowLines);
+
+  // Write-through to the cached chunk (same as a normal edit): getCellData reads
+  // the chunk cache first, so without this the next fetch/refresh would serve
+  // the stale pre-cut content and the cleared cells would reappear. Sequential
+  // awaits because cells in the same chunk are a read-modify-write on one record.
+  const gatherer = new Gatherer(
+    activeSheetName ?? "",
+    DEFAULT_CLIENT_DB_SERVICE_TYPE,
+    DATASOURCE_TYPE,
+  );
+  for (const [cellKey, grid] of Object.entries(dirtyCells) as [
+    `${string}-${string}`,
+    Grid,
+  ][]) {
+    const [rowStr, colStr] = cellKey.split("-");
+    await gatherer.updateCellInCache(
+      Number(rowStr),
+      Number(colStr),
+      cellKey,
+      grid,
+    );
+  }
+
+  // Persist to the server so a later chunk-cache miss doesn't re-fetch the old
+  // values. dirtyCells are already in IDB, which is where saveSheets reads them.
+  saveSheets(setLoading);
+}
+
 // Builds the key -> handler map. Keys are exactly what keyDownConvertor emits.
 export function createKeyDownHandlerMap(
   deps: KeyDownHandlerDeps,
@@ -210,10 +302,12 @@ export function createKeyDownHandlerMap(
     setFourNodes,
     setClickedCells,
     setLoading,
+    setSheetData,
     saveSheets,
     saveTimer,
     sheetData,
     fourNodes,
+    activeSheetName,
   } = deps;
 
   return {
@@ -244,6 +338,16 @@ export function createKeyDownHandlerMap(
     Tab: (keyDown) => handleTab(keyDown, setFourNodes, setClickedCells),
     "ctrl-c": (keyDown) => {
       void handleCopyKey(keyDown, fourNodes, sheetData);
+    },
+    "ctrl-x": () => {
+      void handleCut(
+        fourNodes,
+        sheetData,
+        setSheetData,
+        activeSheetName,
+        saveSheets,
+        setLoading,
+      );
     },
   };
 }

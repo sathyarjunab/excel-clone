@@ -57,7 +57,14 @@ const Y_AXIS_WIDTH = 40;
 const FETCH_DEBOUNCE_MS = 200;
 const SAVE_DEBOUNCE_MS = 2000;
 
-const controlledKeys = [...cellMovementKeys, "Enter", "Escape", "Tab", "c"];
+const controlledKeys = [
+  ...cellMovementKeys,
+  "Enter",
+  "Escape",
+  "Tab",
+  "c",
+  "x",
+];
 
 const movementWeightage: Record<cellMovementKeysType, number> = {
   ArrowUp: -1,

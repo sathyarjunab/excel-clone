@@ -19,7 +19,7 @@ import {
   Y_AXIS_WIDTH,
 } from "../constents";
 import { UserContext } from "../context";
-import { Gatherer } from "../factories/gatherer/service";
+import { Gatherer } from "../services/gatherer/service";
 import { createKeyDownHandlerMap } from "../services/handlers";
 import { clientDbSource } from "../factories/registory/clientDb";
 import { commonService } from "../services/common";
@@ -209,6 +209,8 @@ export default function Sheet() {
         fourNodes,
         moverCell,
         setMoverCell,
+        setSheetData,
+        activeSheetName,
       });
       const handler = handlerMap[convertedKey];
 
@@ -234,6 +236,7 @@ export default function Sheet() {
       setFourNodes,
       setClickedCells,
       setLoading,
+      activeSheetName,
     ],
   );
 

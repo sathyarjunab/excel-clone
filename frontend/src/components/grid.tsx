@@ -27,7 +27,7 @@ function child({
           className="grid-cell"
           style={customStyle}
           autoFocus={true}
-          defaultValue={value ?? ""}
+          value={value ?? ""}
           onChange={handleDataEntry}
         />
       ) : (

@@ -1,7 +1,10 @@
 import { Grid } from "../../types/book";
 import { rangeConvertor } from "../../util/sheet";
-import { clientDbSource, clientDbSourceType } from "../registory/clientDb";
-import { dataSource, DataSourceType } from "../registory/dataSource";
+import {
+  clientDbSource,
+  clientDbSourceType,
+} from "../../factories/registory/clientDb";
+import { dataSource, DataSourceType } from "../../factories/registory/dataSource";
 import { IGatherer } from "./interface";
 
 // we need to keep current range the sheet is at.
