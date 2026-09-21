@@ -23,6 +23,7 @@ export type clientSheet = {
 export type Grid = {
   style: Record<string, string>;
   content: string | null;
+  rawData: string | null;
 };
 
 export enum Alphabets {

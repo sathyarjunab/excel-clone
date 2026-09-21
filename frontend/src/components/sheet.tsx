@@ -19,11 +19,12 @@ import {
   Y_AXIS_WIDTH,
 } from "../constents";
 import { UserContext } from "../context";
+import { clientDbSource } from "../factories/registory/clientDb";
+import "../scss/sheet.scss";
+import { commonService } from "../services/common";
+import { evaluateEquation, isFormula } from "../services/formula";
 import { Gatherer } from "../services/gatherer/service";
 import { createKeyDownHandlerMap } from "../services/handlers";
-import { clientDbSource } from "../factories/registory/clientDb";
-import { commonService } from "../services/common";
-import "../scss/sheet.scss";
 import { clientSheet } from "../types/book";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
@@ -150,11 +151,20 @@ export default function Sheet() {
 
   const handleDataEntry = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const content = e.target.value;
+      const rawData = e.target.value;
       const currentClickedCell = clickedCells?.currentClickedCell;
       if (!currentClickedCell) return;
+      let content = e.target.value;
 
-      const grid = { style: {}, content };
+      if (isFormula(rawData)) {
+        try {
+          content = evaluateEquation(rawData);
+        } catch {
+          content = e.target.value;
+        }
+      }
+
+      const grid = { style: {}, content, rawData };
 
       // #2: cell data is real state, so the edit re-renders the grid normally.
       setSheetData((prev) => {
@@ -293,14 +303,16 @@ export default function Sheet() {
           left: `${left}px`,
         };
 
-        const val = sheetData.cellData[`${x}-${y}`]?.content ?? null;
+        const content = sheetData.cellData[`${x}-${y}`]?.content ?? null;
+        const rawData = sheetData.cellData[`${x}-${y}`]?.rawData ?? null;
 
         visibleCells.push(
           <Grid
             handleDataEntry={handleDataEntry}
             handleDoubleClick={() => handleDoubleClick()}
             key={`${x}-${y}`}
-            value={val}
+            content={content}
+            rawData={rawData}
             customStyle={customStyle}
             coOrdinates={`${x}-${y}`}
             clickedCells={clickedCells}

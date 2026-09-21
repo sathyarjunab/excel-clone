@@ -1,8 +1,9 @@
 import Joi from "joi";
 import { Grid, Sheet } from "../types/book.js";
+import { raw } from "express";
 
 export const gridSchema = Joi.object<Grid>({
-  content: Joi.string().allow("").required(),
+  rawData: Joi.string().allow("").required(),
   style: Joi.object().pattern(Joi.string(), Joi.string()).optional(),
 });
 

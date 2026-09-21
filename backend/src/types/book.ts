@@ -14,4 +14,5 @@ export type Sheet = {
 export type Grid = {
   style: Record<string, string>;
   content: string | null;
+  rawData: string | null;
 };

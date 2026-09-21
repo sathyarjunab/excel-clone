@@ -3,21 +3,25 @@ import "./../scss/sheet.scss";
 import { SheetProps } from "./sheet";
 import { UserContext } from "../context";
 
-function child({
-  handleDoubleClick,
-  handleDataEntry,
-  value,
-  coOrdinates,
-  clickedCells,
-  customStyle,
-}: {
+type GridProps = {
   handleDoubleClick: () => void;
   handleDataEntry: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  value: string | null;
+  content: string | null;
+  rawData: string | null;
   coOrdinates: `${number}-${number}`;
   clickedCells: SheetProps | undefined;
   customStyle?: CSSProperties;
-}) {
+};
+
+function child({
+  handleDoubleClick,
+  handleDataEntry,
+  content,
+  rawData,
+  coOrdinates,
+  clickedCells,
+  customStyle,
+}: GridProps) {
   const { setSelectedCell } = useContext(UserContext)!;
   return (
     <>
@@ -27,7 +31,7 @@ function child({
           className="grid-cell"
           style={customStyle}
           autoFocus={true}
-          value={value ?? ""}
+          value={rawData ?? ""}
           onChange={handleDataEntry}
         />
       ) : (
@@ -41,7 +45,7 @@ function child({
             setSelectedCell(coOrdinates);
           }}
         >
-          {value}
+          {content ?? ""}
         </div>
       )}
     </>
@@ -52,8 +56,10 @@ export const Grid = React.memo(child, (prevProps, nextProps) => {
   if (
     // In the initial render (for any future requirement)
     prevProps.coOrdinates !== nextProps.coOrdinates ||
-    // If the value has changed
-    prevProps.value !== nextProps.value ||
+    // If the content has changed
+    prevProps.content !== nextProps.content ||
+    // If the raw data has changed
+    prevProps.rawData !== nextProps.rawData ||
     // Need to re-render the component when a particular component was clicked and i need to remove it's input field
     nextProps.clickedCells?.prevClickedCell === nextProps.coOrdinates ||
     // Need to re-render the component when a particular component was clicked and i need to add it's input field

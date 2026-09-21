@@ -66,6 +66,8 @@ const controlledKeys = [
   "x",
 ];
 
+const arithmeticTokens = ["+", "-", "/", "*", "(", ")", ","];
+
 const movementWeightage: Record<cellMovementKeysType, number> = {
   ArrowUp: -1,
   ArrowDown: 1,
@@ -88,4 +90,5 @@ export {
   SAVE_DEBOUNCE_MS,
   controlledKeys,
   movementWeightage,
+  arithmeticTokens,
 };
