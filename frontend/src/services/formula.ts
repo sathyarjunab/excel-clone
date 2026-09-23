@@ -1,7 +1,11 @@
 import { arithmeticTokens } from "../constents";
 
 type ExcelFunctionsType = "SUM" | "AVERAGE" | "MIN" | "MAX" | "IF";
+// IF is handled specially (it short-circuits), so it is not one of the plain
+// aggregate functions that just take a list of already-evaluated numbers.
+type AggregateFunctionType = Exclude<ExcelFunctionsType, "IF">;
 type arithmeticOperationType = "+" | "-" | "*" | "/";
+type comparisonOperationType = ">" | "<" | "=";
 
 enum ExcelFunctions {
   SUM = "SUM",
@@ -19,14 +23,13 @@ enum ArithmeticOperation {
 }
 
 const excelFunctions: Record<
-  ExcelFunctionsType,
+  AggregateFunctionType,
   (args: (number | null)[]) => number
 > = {
-  ["SUM"]: sum,
-  ["AVERAGE"]: average,
-  ["MIN"]: min,
-  ["MAX"]: max,
-  ["IF"]: max, // TODO: wrong function need to be implemented
+  SUM: sum,
+  AVERAGE: average,
+  MIN: min,
+  MAX: max,
 };
 
 function isHandledFunction(
@@ -39,6 +42,12 @@ function isArithmeticOperation(
   operation: string,
 ): operation is arithmeticOperationType {
   return (Object.values(ArithmeticOperation) as string[]).includes(operation);
+}
+
+function isComparisonOperation(
+  operation: string,
+): operation is comparisonOperationType {
+  return operation === ">" || operation === "<" || operation === "=";
 }
 
 export function isFormula(value: string): boolean {
@@ -135,7 +144,7 @@ export type ASTNode =
   | { type: "unary"; op: "-" | "+"; operand: ASTNode }
   | {
       type: "binary";
-      op: arithmeticOperationType;
+      op: arithmeticOperationType | comparisonOperationType;
       left: ASTNode;
       right: ASTNode;
     }
@@ -177,7 +186,7 @@ export function parse(tokens: string[]): ASTNode {
     while (peek() !== undefined && COMPARISON_OPS.includes(peek()!)) {
       const op = next();
       const right = parseAddSub();
-      if (!isArithmeticOperation(op)) {
+      if (!isComparisonOperation(op)) {
         throw new Error(`Unknown operator ${op}`);
       }
       left = { type: "binary", op, left, right };
@@ -298,34 +307,56 @@ export function parse(tokens: string[]): ASTNode {
 }
 
 // SUM, AVERAGE, MIN, MAX, IF
-export function transformRawData(rawData: string): string {
+export function evaluateEquation(rawData: string): string {
   if (!isFormula(rawData)) return "#NAME?";
   if (rawData.length === 1) return rawData;
-  const tokens = tokenize(rawData);
-  const ast = parse(tokens);
-  // TEMP: inspect the parse tree — remove once the evaluator exists.
-  console.log(JSON.stringify(ast, null, 2));
-  return treeTraversal(ast)?.toString() ?? "#VALUE!";
+  try {
+    const tokens = tokenize(rawData);
+    const ast = parse(tokens);
+    const result = treeTraversal(ast);
+    return result?.toString() ?? "#VALUE!";
+  } catch (err) {
+    // Excel-style error codes (e.g. "#DIV/0!") are thrown with a "#"-prefixed
+    // message; anything else (parse errors, mid-typing) collapses to #ERROR!.
+    const message = err instanceof Error ? err.message : "";
+    return message.startsWith("#") ? message : "#ERROR!";
+  }
 }
 
 export function arithmeticOperation(
   type: arithmeticOperationType,
   args: (number | null)[],
 ): number {
-  console.log(args);
-  if (!args) return 0;
+  // Empty (e.g. SUM of an all-blank range) is 0, not a reduce-of-empty crash.
+  if (args.length === 0) return 0;
   return (
     args.reduce((a, b) => {
-      if (!b) {
-        throw new Error("Invalid argument");
+      // Blank cells count as 0 in arithmetic, matching Excel.
+      const left = a ?? 0;
+      const right = b ?? 0;
+      if (type === "+") return left + right;
+      if (type === "-") return left - right;
+      if (type === "*") return left * right;
+      if (type === "/") {
+        if (right === 0) throw new Error("#DIV/0!");
+        return left / right;
       }
-      if (type === "+") return (a ?? 0) + b;
-      if (type === "-") return (a ?? 0) - b;
-      if (type === "*") return (a ?? 0) * b;
-      if (type === "/") return (a ?? 0) / b;
       return 0;
     }) ?? 0
   );
+}
+
+// Comparisons (used inside IF): returns 1 for true, 0 for false.
+export function comparisonOperation(
+  op: comparisonOperationType,
+  left: number | null,
+  right: number | null,
+): number {
+  const a = left ?? 0;
+  const b = right ?? 0;
+  if (op === ">") return a > b ? 1 : 0;
+  if (op === "<") return a < b ? 1 : 0;
+  return a === b ? 1 : 0;
 }
 
 export function sum(args: (number | null)[]) {
@@ -333,49 +364,60 @@ export function sum(args: (number | null)[]) {
 }
 
 export function average(args: (number | null)[]) {
-  return arithmeticOperation("+", args) / args.length;
+  // Blanks are ignored (not counted in the denominator), matching Excel.
+  const nums = args.filter((arg): arg is number => arg !== null);
+  if (nums.length === 0) return 0;
+  return arithmeticOperation("+", nums) / nums.length;
 }
 
 export function min(args: (number | null)[]) {
-  if (!args) return 0;
-  const filteredArgs = args.filter((arg) => arg !== null);
-  return Math.min(...filteredArgs);
+  const nums = args.filter((arg): arg is number => arg !== null);
+  if (nums.length === 0) return 0;
+  return Math.min(...nums);
 }
 
 export function max(args: (number | null)[]) {
-  if (!args) return 0;
-  const filteredArgs = args.filter((arg) => arg !== null);
-  return Math.max(...filteredArgs);
+  const nums = args.filter((arg): arg is number => arg !== null);
+  if (nums.length === 0) return 0;
+  return Math.max(...nums);
 }
 
 export function treeTraversal(tree: ASTNode): number | null {
-  if (
-    !tree ||
-    !["number", "ref", "range", "unary", "binary", "call"].includes(tree.type)
-  )
-    return null;
+  if (!tree) return null;
 
   if (tree.type === "call") {
-    const args = tree.args;
-    const valuatedArgs: (number | null)[] = args.map((arg) =>
+    // IF is special: it must evaluate the condition first and then ONLY the
+    // taken branch (short-circuit), so it is not part of the eager map.
+    if (tree.name === "IF") {
+      const [conditionNode, thenNode, elseNode] = tree.args;
+      if (!conditionNode) throw new Error("#ERROR!");
+      const condition = treeTraversal(conditionNode);
+      // Non-zero (and non-blank) is truthy.
+      if (condition !== null && condition !== 0) {
+        return thenNode ? treeTraversal(thenNode) : null;
+      }
+      return elseNode ? treeTraversal(elseNode) : 0;
+    }
+
+    // tree.name is now narrowed to the aggregate functions (IF handled above).
+    const valuatedArgs: (number | null)[] = tree.args.map((arg) =>
       treeTraversal(arg),
     );
     return excelFunctions[tree.name](valuatedArgs);
   }
 
   if (tree.type === "binary") {
-    const left = tree.left;
-    const right = tree.right;
-    const valuatedLeft = treeTraversal(left);
-    const valuatedRight = treeTraversal(right);
-    console.log(valuatedLeft, valuatedRight);
-    return arithmeticOperation(tree.op, [valuatedLeft, valuatedRight]);
+    const left = treeTraversal(tree.left);
+    const right = treeTraversal(tree.right);
+    if (isComparisonOperation(tree.op)) {
+      return comparisonOperation(tree.op, left, right);
+    }
+    return arithmeticOperation(tree.op, [left, right]);
   }
 
   if (tree.type === "unary") {
-    const operand = tree.operand;
-    const valuatedOperand = treeTraversal(operand);
-    return arithmeticOperation(tree.op, [valuatedOperand, 1]);
+    const operand = treeTraversal(tree.operand) ?? 0;
+    return tree.op === "-" ? -operand : operand;
   }
 
   if (tree.type === "number") {
@@ -389,8 +431,4 @@ export function treeTraversal(tree: ASTNode): number | null {
 
   //TODO: finding the range function
   return Math.random();
-}
-
-export function evaluateEquation(rawData: string): string {
-  return transformRawData(rawData);
 }
