@@ -1,3 +1,5 @@
+import { Grid } from "./book.js";
+
 export type Workbook = {
   name: string;
   sheets: Sheet[];
@@ -10,11 +12,6 @@ export type Sheet = {
   cells: Record<`${string}-${string}`, Grid>;
   dirtyCells: Record<`${string}-${string}`, Grid>;
   hasChanged: boolean;
-};
-
-export type Grid = {
-  style: Record<string, string>;
-  content: string | null;
 };
 
 export enum Alphabets {

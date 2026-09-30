@@ -17,7 +17,10 @@ export type GetRangeInput = {
 
 export interface ISheetService {
   save(userId: string, input: SaveSheetInput): Promise<void>;
-  getRange(userId: string, input: GetRangeInput): Promise<sheet[]>;
+  customRangeChunksFetcher(
+    userId: string,
+    input: GetRangeInput,
+  ): Promise<sheet[]>;
   getSheetNames(
     userId: string,
     bookId: string,

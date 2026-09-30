@@ -1,20 +1,57 @@
+import { ALPHABETS } from "../constents.js";
 import { MAXCOLUMN, MAXROWS } from "./fixedConstents.js";
 
-export function rowsColConvertor(coOrdinates: string): [number, number] {
+const ALPHANUMERIC = /^([A-Za-z]+)(\d+)$/;
+type RowColumn = {
+  row: number;
+  column: number;
+};
+
+/**
+ * Concerts the co-ordinates that is in the form of string-string to rows and column
+ * @param coOrdinates
+ * @returns
+ */
+export function rowsColConvertor(coOrdinates: string): RowColumn {
   let result = coOrdinates.split("-");
   if (result.length !== 2) throw Error("Invalid cell coOrdinates");
 
   result = result.filter((s) => !isNaN(Number(s)));
   if (result.length !== 2) throw Error("coOrdinates are not numbers");
 
-  return [Number(result[0]), Number(result[1])];
+  return { row: Number(result[0]), column: Number(result[1]) };
 }
 
-export function rangeGetter(rows: number, col: number) {
-  const rowRange = Math.max(Math.ceil(rows / MAXROWS), 1) * MAXROWS;
-  const colRange = Math.max(Math.ceil(col / MAXCOLUMN), 1) * MAXCOLUMN;
+/**
+ * This returns the exact range at which the particular co-ordinate exists
+ * @param rows
+ * @param col
+ * @returns
+ */
+export function rangeGetter(coOrdinates: RowColumn) {
+  const rowRange = Math.max(Math.ceil(coOrdinates.row / MAXROWS), 1) * MAXROWS;
+  const colRange =
+    Math.max(Math.ceil(coOrdinates.column / MAXCOLUMN), 1) * MAXCOLUMN;
 
   return `${rowRange}-${colRange}`;
+}
+
+/**
+ * converts the alpha numeric numbers in the form of A1 to rows and column
+ * @param coOrdinates
+ * @returns
+ */
+
+export function alphaNumericConvertor(coOrdinates: string[]): RowColumn[] {
+  const rowColumn: { row: number; column: number }[] = [];
+  for (const coOrd of coOrdinates) {
+    const match = coOrd.match(ALPHANUMERIC);
+    if (!match) return [];
+    const formedString = `${match[0]}-${match[1]}`;
+    // match 0 is alphabet, match 1 is number
+    rowColumn.push(rowsColConvertor(formedString));
+  }
+  return rowColumn;
 }
 
 export function rangeCalculator(
@@ -23,7 +60,26 @@ export function rangeCalculator(
   startCol: number,
   endCol: number,
 ): string[] {
-  const range1 = rangeGetter(startRow, startCol);
-  const range2 = rangeGetter(endRow, endCol);
+  const range1 = rangeGetter({
+    row: startRow,
+    column: startCol,
+  });
+  const range2 = rangeGetter({
+    row: endRow,
+    column: endCol,
+  });
   return range1 === range2 ? [range1] : [range1, range2];
+}
+
+export function numberToAlphabet(num: number, result: string = ""): string {
+  if (!num || num <= 0) return "";
+  const rem = ((num - 1) % 26) + 1;
+  const quo = Math.floor((num - 1) / 26);
+  const res = quo > 0 ? numberToAlphabet(quo, result) : "";
+  return (result += res + ALPHABETS[rem]);
+}
+
+export function coOrdinateToAlphaNumeric(coOrdinate: `${number}-${number}`) {
+  const splitValues = coOrdinate.split("-");
+  return `${numberToAlphabet(Number(splitValues[0]))} +${splitValues[1]}`;
 }

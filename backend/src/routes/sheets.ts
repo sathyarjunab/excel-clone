@@ -7,6 +7,7 @@ import {
   sheetGetterSchema,
   sheetSchema,
 } from "../validator/commonValidator.js";
+import { alphaNumericConvertor, rangeGetter } from "../util/sheet.js";
 
 export const sheetsRouter = Router();
 
@@ -36,7 +37,7 @@ sheetsRouter.post("/save", async (req: Request, res: Response) => {
   res.status(200).send({ message: "changes saved" });
 });
 
-// Distinct sheet names for a book.
+//sheet names for a book.
 sheetsRouter.get("/sheetNames/:bookId", async (req, res) => {
   const bookId = await Joi.string().required().validateAsync(req.params.bookId);
 
@@ -57,7 +58,7 @@ sheetsRouter.get("/sheet", async (req, res) => {
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   const service = await getSheetService();
-  const sheets = await service.getRange(userId, sheetInfo);
+  const sheets = await service.customRangeChunksFetcher(userId, sheetInfo);
 
   res.status(200).send(sheets);
 });
@@ -75,4 +76,29 @@ sheetsRouter.delete("/removeSheets/:sheetName", async (req, res) => {
   });
 
   res.status(200).send({ message: "sheet removed" });
+});
+
+/**
+ * cell Data for each of the co-ordinates;
+ */
+sheetsRouter.post("/sheet/cellValue", async (req, res) => {
+  const { ranges: validRanges, sheetName } = await Joi.object<{
+    ranges: string[];
+    sheetName: string;
+  }>({
+    ranges: Joi.array().items(Joi.string()).required(),
+    sheetName: Joi.string(),
+  }).validateAsync(req.body);
+
+  const SheetService = await getSheetService();
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  const cellData = await SheetService.specificCellDataGetter(
+    validRanges,
+    userId,
+    sheetName,
+  );
+
+  res.status(200).send(cellData);
 });

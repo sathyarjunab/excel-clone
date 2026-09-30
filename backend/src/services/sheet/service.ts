@@ -1,11 +1,14 @@
 import { Prisma } from "../../generated/prisma/client.js";
 import { ISheetRepository } from "../../factories/repository/interface.js";
 import {
+  alphaNumericConvertor,
+  coOrdinateToAlphaNumeric,
   rangeCalculator,
   rangeGetter,
   rowsColConvertor,
 } from "../../util/sheet.js";
 import { GetRangeInput, ISheetService, SaveSheetInput } from "./interface.js";
+import { Grid } from "../../types/book.js";
 
 // All sheet business logic lives here, decoupled from both HTTP and Prisma.
 // It depends only on ISheetRepository, so it can be unit-tested against a fake.
@@ -26,15 +29,15 @@ export class SheetService implements ISheetService {
     const updatesById = new Map<string, Record<string, unknown>>();
 
     for (const [coOrd, grid] of Object.entries(dirtyCells)) {
-      const [rows, col] = rowsColConvertor(coOrd);
+      const { row, column } = rowsColConvertor(coOrd);
 
       const existingRow = sheets.find((s) => {
-        const [r, c] = rowsColConvertor(s.range);
-        return rows <= r && col <= c && s.sheetName === name;
+        const { row, column } = rowsColConvertor(s.range);
+        return row <= row && column <= column && s.sheetName === name;
       });
 
       if (!existingRow) {
-        const range = rangeGetter(rows, col);
+        const range = rangeGetter({ column, row });
         const pending = createsByRange.get(range);
 
         if (pending) {
@@ -75,7 +78,7 @@ export class SheetService implements ISheetService {
     await Promise.allSettled(operations);
   }
 
-  getRange(
+  customRangeChunksFetcher(
     userId: string,
     { sheetName, startRow, endRow, startCol, endCol }: GetRangeInput,
   ) {
@@ -90,5 +93,47 @@ export class SheetService implements ISheetService {
 
   async removeSheet(userId: string, sheetId: string) {
     await this.repo.deleteSheet(userId, sheetId);
+  }
+
+  async specificCellDataGetter(
+    validRanges: string[],
+    userId: string,
+    sheetName: string,
+  ) {
+    const coOrdinates = alphaNumericConvertor(validRanges);
+    const rangeSet = new Set<string>();
+
+    for (let coOrdinate of coOrdinates) {
+      const range = rangeGetter(coOrdinate);
+      rangeSet.add(range);
+    }
+
+    const rangeData = await this.repo.findByRanges(
+      userId,
+      sheetName,
+      Array.from(rangeSet),
+    );
+
+    const cellData: Record<string, string> = {};
+
+    for (let coOrdinate of coOrdinates) {
+      const range = rangeGetter(coOrdinate);
+      const chunk = rangeData.find((r) => r.range === range);
+      if (!chunk) continue;
+
+      if (
+        typeof chunk.data === "object" &&
+        chunk.data !== null &&
+        !Array.isArray(chunk.data)
+      ) {
+        const data = chunk.data[
+          `${coOrdinate.row}-${coOrdinate.column}`
+        ] as Grid | null;
+        cellData[
+          coOrdinateToAlphaNumeric(`${coOrdinate.row}-${coOrdinate.column}`)
+        ] = data?.content ?? "";
+      }
+    }
+    return cellData;
   }
 }

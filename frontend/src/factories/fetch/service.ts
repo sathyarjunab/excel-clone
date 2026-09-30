@@ -99,26 +99,26 @@ export class Api implements DataSource {
   }
 
   public async saveSheets({
-    dirtyCells,
-    name,
-    bookId,
+  dirtyCells,
+  name,
+  bookId,
   }: {
-    dirtyCells: Record<`${string}-${string}`, Grid> | undefined;
-    name: string;
-    bookId: string | null;
+  dirtyCells: Record<`${string}-${string}`, Grid> | undefined;
+  name: string;
+  bookId: string | null;
   }): Promise<void> {
-    try {
-      await this.fetcher("/sheets/save", "POST", true, undefined, {
-        dirtyCells: dirtyCells,
-        name: name,
-        bookId: bookId,
-      });
-    } catch (err) {
-      throw new Error(
-        "Failed to save sheets: " +
-          (err instanceof Error ? err.message : "Unknown error"),
-      );
-    }
+  try {
+    await this.fetcher("/sheets/save", "POST", true, undefined, {
+      dirtyCells: dirtyCells,
+      name: name,
+      bookId: bookId,
+    });
+  } catch (err) {
+    throw new Error(
+      "Failed to save sheets: " +
+        (err instanceof Error ? err.message : "Unknown error"),
+    );
+  }
   }
 
   public async deleteSheet(sheetName: string) {
