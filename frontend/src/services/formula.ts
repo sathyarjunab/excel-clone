@@ -425,7 +425,6 @@ export function treeTraversal(tree: ASTNode): number | null {
   }
 
   if (tree.type === "ref") {
-    //TODO: finding the ref function
     return Math.random();
   }
 

@@ -1,4 +1,4 @@
-import { ALPHABETS } from "../constents.js";
+import { ALPHABETS, alphabetsMapping } from "../constents.js";
 import { MAXCOLUMN, MAXROWS } from "./fixedConstents.js";
 
 const ALPHANUMERIC = /^([A-Za-z]+)(\d+)$/;
@@ -46,8 +46,8 @@ export function alphaNumericConvertor(coOrdinates: string[]): RowColumn[] {
   const rowColumn: { row: number; column: number }[] = [];
   for (const coOrd of coOrdinates) {
     const match = coOrd.match(ALPHANUMERIC);
-    if (!match) return [];
-    const formedString = `${match[0]}-${match[1]}`;
+    if (!match) continue;
+    const formedString = `${columnToNumber(match[1] ?? "")}-${match[2]}`;
     // match 0 is alphabet, match 1 is number
     rowColumn.push(rowsColConvertor(formedString));
   }
@@ -77,6 +77,16 @@ export function numberToAlphabet(num: number, result: string = ""): string {
   const quo = Math.floor((num - 1) / 26);
   const res = quo > 0 ? numberToAlphabet(quo, result) : "";
   return (result += res + ALPHABETS[rem]);
+}
+
+function columnToNumber(column: string): number {
+  let result = 0;
+
+  for (const char of column.toUpperCase()) {
+    result = result * 26 + (char.charCodeAt(0) - "A".charCodeAt(0) + 1);
+  }
+
+  return result;
 }
 
 export function coOrdinateToAlphaNumeric(coOrdinate: `${number}-${number}`) {
