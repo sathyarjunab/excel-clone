@@ -132,15 +132,25 @@ export class Api implements DataSource {
     }
   }
 
-  public async getCellData(alphaCoOrdinates: string[], sheetName: string) {
+  public async getCellData(
+    alphaCoOrdinates: string[],
+    sheetName: string,
+  ): Promise<Record<string, string>> {
     try {
-      return await this.fetcher(`/sheet/cellValue`, "POST", true, undefined, {
-        ranges: alphaCoOrdinates,
-        sheetName,
-      });
+      const { data } = await this.fetcher<Record<string, string>>(
+        `/sheets/sheet/cellValue`,
+        "POST",
+        true,
+        undefined,
+        {
+          ranges: alphaCoOrdinates,
+          sheetName,
+        },
+      );
+      return data;
     } catch (err) {
       throw new Error(
-        "Failed to delete sheet: " +
+        "Failed to fetch cell values: " +
           (err instanceof Error ? err.message : "Unknown error"),
       );
     }

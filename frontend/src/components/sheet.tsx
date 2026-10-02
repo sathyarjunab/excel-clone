@@ -20,12 +20,13 @@ import {
 } from "../constents";
 import { UserContext } from "../context";
 import { clientDbSource } from "../factories/registory/clientDb";
+import { dataSource } from "../factories/registory/dataSource";
 import "../scss/sheet.scss";
 import { commonService } from "../services/common";
 import { evaluateEquation, isFormula } from "../services/formula";
 import { Gatherer } from "../services/gatherer/service";
 import { createKeyDownHandlerMap } from "../services/handlers";
-import { clientSheet } from "../types/book";
+import { clientSheet, Grid as CellGrid } from "../types/book";
 import { numberToAlphabet } from "../util/sheet";
 import { Grid } from "./grid";
 
@@ -84,6 +85,9 @@ export default function Sheet() {
   // #4: two independent debounces, each in a ref so they survive re-renders
   // without being state (a timer in state re-renders on every scroll).
   const fetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Debounces formula evaluation so a formula's batch cell fetch fires once
+  // after typing settles, not on every keystroke.
+  const evalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const yAxisWidth = getYAxisWidth(rowsAndCol.rows);
 
@@ -154,48 +158,59 @@ export default function Sheet() {
       const rawData = e.target.value;
       const currentClickedCell = clickedCells?.currentClickedCell;
       if (!currentClickedCell) return;
-      let content = e.target.value;
 
-      if (isFormula(rawData)) {
-        try {
-          content = evaluateEquation(rawData);
-        } catch {
-          content = e.target.value;
-        }
-      }
-
-      const grid = { style: {}, content, rawData };
-
-      // #2: cell data is real state, so the edit re-renders the grid normally.
-      setSheetData((prev) => {
-        // #3: add the dirty cell to the IDB so that if the user refreshes the page as soon as he enters the details it persist in db
-        clientDbInstancePromise.then(async (clientDbInstance) => {
-          await clientDbInstance.saveDirtyCell({
-            ...prev.dirtyCells,
-            [currentClickedCell]: grid,
-          });
-        });
-
-        return {
-          cellData: { ...prev.cellData, [currentClickedCell]: grid },
-          dirtyCells: { ...prev.dirtyCells, [currentClickedCell]: grid },
-        };
-      });
-
-      // #4: write through to the IDB chunk so scrolling away and back shows the
-      // edit instead of the stale value cached on the first fetch.
       const [rowStr, colStr] = currentClickedCell.split("-");
       const gatherer = new Gatherer(
         activeSheetName ?? "",
         DEFAULT_CLIENT_DB_SERVICE_TYPE,
         DATASOURCE_TYPE,
       );
-      void gatherer.updateCellInCache(
-        Number(rowStr),
-        Number(colStr),
-        currentClickedCell,
-        grid,
-      );
+
+      // Persist one cell everywhere the edit path cares about: React state (#2),
+      // the IDB dirty-cell store (#3), and the cached chunk (#4, write-through so
+      // scrolling away and back shows the edit, not the stale cached value).
+      const commitCell = (grid: CellGrid) => {
+        setSheetData((prev) => {
+          clientDbInstancePromise.then(async (clientDbInstance) => {
+            await clientDbInstance.saveDirtyCell({
+              ...prev.dirtyCells,
+              [currentClickedCell]: grid,
+            });
+          });
+          return {
+            cellData: { ...prev.cellData, [currentClickedCell]: grid },
+            dirtyCells: { ...prev.dirtyCells, [currentClickedCell]: grid },
+          };
+        });
+        void gatherer.updateCellInCache(
+          Number(rowStr),
+          Number(colStr),
+          currentClickedCell,
+          grid,
+        );
+      };
+
+      // Optimistic: show the raw text immediately so typing never waits on the
+      // network. A formula's computed value is patched in once its batch fetch
+      // resolves (debounced below).
+      commitCell({ style: {}, content: rawData, rawData });
+
+      if (isFormula(rawData)) {
+        if (evalTimer.current) clearTimeout(evalTimer.current);
+        evalTimer.current = setTimeout(async () => {
+          try {
+            const api = await dataSource[DATASOURCE_TYPE]();
+            // The engine collects every ref/range the formula needs and fetches
+            // them all in this single getCellData call.
+            const content = await evaluateEquation(rawData, (refs) =>
+              api.getCellData(refs, activeSheetName ?? ""),
+            );
+            commitCell({ style: {}, content, rawData });
+          } catch {
+            // Leave the optimistic raw value in place on failure.
+          }
+        }, FETCH_DEBOUNCE_MS);
+      }
 
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(
@@ -203,12 +218,21 @@ export default function Sheet() {
         SAVE_DEBOUNCE_MS,
       );
     },
-    [clickedCells, activeSheetName, saveSheets, setSheetData],
+    [clickedCells, activeSheetName, saveSheets, setSheetData, setLoading],
   );
 
   const handleKeyDown = useCallback(
     (keyDown: KeyboardEvent) => {
       const convertedKey = commonService.keyDownConvertor(keyDown);
+
+      // While a cell is being edited the input must own text keys: arrows move
+      // the caret, shift+arrow selects text, ctrl+c/x copy/cut the text. Only
+      // Enter and Tab still run their handlers (commit + move to the next cell).
+      const isEditingCell = keyDown.target instanceof HTMLInputElement;
+      if (isEditingCell && convertedKey !== "Enter" && convertedKey !== "Tab") {
+        return;
+      }
+
       const handlerMap = createKeyDownHandlerMap({
         setFourNodes,
         setClickedCells,
@@ -252,19 +276,19 @@ export default function Sheet() {
 
   const xAxisStyle = useMemo<CSSProperties>(
     () => ({
-      backgroundColor: "#F3F3F3",
+      backgroundColor: "var(--surface)",
       justifyContent: "center",
-      color: "#616174",
+      color: "var(--text-dim)",
       zIndex: 2,
     }),
     [],
   );
   const yAxisStyle = useMemo<CSSProperties>(
     () => ({
-      backgroundColor: "#F3F3F3",
+      backgroundColor: "var(--surface)",
       width: `${yAxisWidth}px`,
       justifyContent: "end",
-      color: "#616174",
+      color: "var(--text-dim)",
       zIndex: 2,
       paddingRight: 6,
       textAlign: "right",

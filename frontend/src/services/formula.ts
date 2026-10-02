@@ -1,4 +1,5 @@
 import { arithmeticTokens } from "../constents";
+import { numberToAlphabet } from "../util/sheet";
 
 type ExcelFunctionsType = "SUM" | "AVERAGE" | "MIN" | "MAX" | "IF";
 // IF is handled specially (it short-circuits), so it is not one of the plain
@@ -306,14 +307,107 @@ export function parse(tokens: string[]): ASTNode {
   return ast;
 }
 
+// ---- A1 <-> coordinate helpers (the inverse of numberToAlphabet). A1 is
+// column-letter + row-number; these drive range expansion and ref collection. ----
+
+const A1_PATTERN = /^([A-Za-z]+)([0-9]+)$/;
+
+// "E" -> 5, "AA" -> 27 (bijective base-26 decode).
+function columnToNumber(column: string): number {
+  let result = 0;
+  for (const char of column.toUpperCase()) {
+    result = result * 26 + (char.charCodeAt(0) - "A".charCodeAt(0) + 1);
+  }
+  return result;
+}
+
+function parseRef(ref: string): { col: number; row: number } {
+  const match = ref.match(A1_PATTERN);
+  if (!match) throw new Error("#REF!");
+  return { col: columnToNumber(match[1]!), row: Number(match[2]) };
+}
+
+// Expands "A1".."B3" into every A1 key it covers, normalised to upper case.
+// Endpoints may be given in any corner order, so min/max each axis.
+function expandRange(start: string, end: string): string[] {
+  const a = parseRef(start);
+  const b = parseRef(end);
+  const minCol = Math.min(a.col, b.col);
+  const maxCol = Math.max(a.col, b.col);
+  const minRow = Math.min(a.row, b.row);
+  const maxRow = Math.max(a.row, b.row);
+
+  const cells: string[] = [];
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      cells.push(`${numberToAlphabet(col, "")}${row}`);
+    }
+  }
+  return cells;
+}
+
+// Walks the AST once and collects every cell the formula reads, expanding each
+// range into its individual cells, so the caller can fetch them all in one go.
+function collectRefs(node: ASTNode, acc: Set<string>): void {
+  if (!node) return;
+  switch (node.type) {
+    case "ref":
+      acc.add(node.ref.toUpperCase());
+      break;
+    case "range":
+      for (const cell of expandRange(node.start, node.end)) acc.add(cell);
+      break;
+    case "unary":
+      collectRefs(node.operand, acc);
+      break;
+    case "binary":
+      collectRefs(node.left, acc);
+      collectRefs(node.right, acc);
+      break;
+    case "call":
+      for (const arg of node.args) collectRefs(arg, acc);
+      break;
+  }
+}
+
+// Server returns raw cell content strings. Empty -> blank (null); a numeric
+// string -> its number; anything else (text, or a formula-valued ref, which is
+// the dependency-graph boundary we haven't crossed yet) -> blank for now.
+function toCellValue(content: string | undefined): number | null {
+  if (content === undefined || content === "") return null;
+  const n = Number(content);
+  return isNaN(n) ? null : n;
+}
+
+// Fetches raw content for a batch of A1 refs in one call (A1 -> content).
+export type CellResolver = (refs: string[]) => Promise<Record<string, string>>;
+
 // SUM, AVERAGE, MIN, MAX, IF
-export function evaluateEquation(rawData: string): string {
+export async function evaluateEquation(
+  rawData: string,
+  resolveCells: CellResolver,
+): Promise<string> {
   if (!isFormula(rawData)) return "#NAME?";
   if (rawData.length === 1) return rawData;
   try {
     const tokens = tokenize(rawData);
     const ast = parse(tokens);
-    const result = treeTraversal(ast);
+
+    // 1. Collect every cell this formula needs (ranges expanded to cells)...
+    const refSet = new Set<string>();
+    collectRefs(ast, refSet);
+    const refs = [...refSet];
+    console.log(refs);
+
+    // 2. ...fetch them all in a single call...
+    const rawValues = refs.length ? await resolveCells(refs) : {};
+    const values = new Map<string, number | null>();
+    for (const [a1, content] of Object.entries(rawValues)) {
+      values.set(a1.toUpperCase(), toCellValue(content));
+    }
+
+    // 3. ...then evaluate against the resolved values.
+    const result = treeTraversal(ast, values);
     return result?.toString() ?? "#VALUE!";
   } catch (err) {
     // Excel-style error codes (e.g. "#DIV/0!") are thrown with a "#"-prefixed
@@ -382,7 +476,10 @@ export function max(args: (number | null)[]) {
   return Math.max(...nums);
 }
 
-export function treeTraversal(tree: ASTNode): number | null {
+export function treeTraversal(
+  tree: ASTNode,
+  values: Map<string, number | null>,
+): number | null {
   if (!tree) return null;
 
   if (tree.type === "call") {
@@ -391,24 +488,33 @@ export function treeTraversal(tree: ASTNode): number | null {
     if (tree.name === "IF") {
       const [conditionNode, thenNode, elseNode] = tree.args;
       if (!conditionNode) throw new Error("#ERROR!");
-      const condition = treeTraversal(conditionNode);
+      const condition = treeTraversal(conditionNode, values);
       // Non-zero (and non-blank) is truthy.
       if (condition !== null && condition !== 0) {
-        return thenNode ? treeTraversal(thenNode) : null;
+        return thenNode ? treeTraversal(thenNode, values) : null;
       }
-      return elseNode ? treeTraversal(elseNode) : 0;
+      return elseNode ? treeTraversal(elseNode, values) : 0;
     }
 
     // tree.name is now narrowed to the aggregate functions (IF handled above).
-    const valuatedArgs: (number | null)[] = tree.args.map((arg) =>
-      treeTraversal(arg),
-    );
+    // A range arg (SUM(A1:B3)) is NOT one value — expand it into the list of its
+    // cell values and flatten into the argument list; scalar args evaluate normally.
+    const valuatedArgs: (number | null)[] = [];
+    for (const arg of tree.args) {
+      if (arg?.type === "range") {
+        for (const cell of expandRange(arg.start, arg.end)) {
+          valuatedArgs.push(values.get(cell) ?? null);
+        }
+      } else {
+        valuatedArgs.push(treeTraversal(arg, values));
+      }
+    }
     return excelFunctions[tree.name](valuatedArgs);
   }
 
   if (tree.type === "binary") {
-    const left = treeTraversal(tree.left);
-    const right = treeTraversal(tree.right);
+    const left = treeTraversal(tree.left, values);
+    const right = treeTraversal(tree.right, values);
     if (isComparisonOperation(tree.op)) {
       return comparisonOperation(tree.op, left, right);
     }
@@ -416,7 +522,7 @@ export function treeTraversal(tree: ASTNode): number | null {
   }
 
   if (tree.type === "unary") {
-    const operand = treeTraversal(tree.operand) ?? 0;
+    const operand = treeTraversal(tree.operand, values) ?? 0;
     return tree.op === "-" ? -operand : operand;
   }
 
@@ -425,9 +531,11 @@ export function treeTraversal(tree: ASTNode): number | null {
   }
 
   if (tree.type === "ref") {
-    return Math.random();
+    // Blank/missing cells resolve to null (treated as blank by the operators).
+    return values.get(tree.ref.toUpperCase()) ?? null;
   }
 
-  //TODO: finding the range function
-  return Math.random();
+  // A bare range used where a single value is expected (e.g. "=A1:B3", or a
+  // range as an IF branch) isn't a scalar — Excel errors here.
+  throw new Error("#VALUE!");
 }

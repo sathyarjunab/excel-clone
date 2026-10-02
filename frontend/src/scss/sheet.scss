@@ -19,7 +19,7 @@
 
 .sheet-body {
   position: relative;
-  background-color: #ffffff;
+  background-color: var(--bg);
 }
 
 .sheet-axis {
@@ -27,7 +27,7 @@
   top: 0;
   left: 0;
   z-index: 2;
-  background-color: #f3f3f3;
+  background-color: var(--surface);
   pointer-events: none;
   // The transform (set inline from the scroll position) pins the axis to the
   // viewport; will-change keeps that transform on its own compositor layer.
@@ -54,14 +54,15 @@
   position: absolute;
   width: 64px;
   height: 20px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--grid-line);
   box-sizing: border-box;
   padding: 0 4px;
   font-size: 11pt;
   font-family: Calibri, sans-serif;
   display: flex;
   align-items: center;
-  background-color: #ffffff;
+  background-color: var(--bg);
+  color: var(--text);
 
   overflow: hidden;
 
@@ -76,11 +77,21 @@
   display: none;
 }
 
+/* Active-cell editor: the input shares .grid-cell, so it only needs its own
+   focus ring and a matching surface. */
+input.grid-cell {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background-color: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+}
+
 .loading-cell {
   justify-content: center;
   align-items: center;
-  background-color: #f8fafc;
-  color: #64748b;
+  background-color: var(--surface-2);
+  color: var(--text-dim);
 }
 
 .loading-spinner,
@@ -88,7 +99,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #1e7145;
+  background-color: var(--accent);
   animation: pulse 0.8s ease-in-out infinite;
 }
 
@@ -101,11 +112,11 @@
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-  color: #616174;
+  background: var(--surface-2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  color: var(--text-dim);
   font-size: 11px;
   pointer-events: none;
 }
@@ -114,7 +125,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #1e7145;
+  background-color: var(--accent);
   animation: pulse 0.9s ease-in-out infinite;
 }
 
@@ -145,8 +156,8 @@
   position: absolute;
   z-index: 1;
   box-sizing: border-box;
-  border: 2px solid #1e7145;
-  background-color: rgba(30, 113, 69, 0.12);
+  border: 2px solid var(--accent);
+  background-color: var(--accent-weak);
   pointer-events: none;
   will-change: top, left, width, height;
 }

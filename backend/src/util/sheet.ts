@@ -47,8 +47,9 @@ export function alphaNumericConvertor(coOrdinates: string[]): RowColumn[] {
   for (const coOrd of coOrdinates) {
     const match = coOrd.match(ALPHANUMERIC);
     if (!match) continue;
-    const formedString = `${columnToNumber(match[1] ?? "")}-${match[2]}`;
-    // match 0 is alphabet, match 1 is number
+    // Internal keys are row-col, but A1 is column-letter + row-number: the
+    // digits (match[2]) are the row and the letters (match[1]) are the column.
+    const formedString = `${match[2]}-${columnToNumber(match[1] ?? "")}`;
     rowColumn.push(rowsColConvertor(formedString));
   }
   return rowColumn;
@@ -91,5 +92,7 @@ function columnToNumber(column: string): number {
 
 export function coOrdinateToAlphaNumeric(coOrdinate: `${number}-${number}`) {
   const splitValues = coOrdinate.split("-");
-  return `${numberToAlphabet(Number(splitValues[0]))} +${splitValues[1]}`;
+  // Input is row-col; A1 is column-letter + row-number, so the letter comes from
+  // the column (splitValues[1]) and the row number (splitValues[0]) trails it.
+  return `${numberToAlphabet(Number(splitValues[1]))}${splitValues[0]}`;
 }

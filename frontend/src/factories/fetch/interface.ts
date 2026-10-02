@@ -37,4 +37,8 @@ export interface DataSource {
     bookId: string | null;
   }): Promise<void>;
   deleteSheet(sheetName: string): Promise<void>;
+  getCellData(
+    alphaCoOrdinates: string[],
+    sheetName: string,
+  ): Promise<Record<string, string>>;
 }

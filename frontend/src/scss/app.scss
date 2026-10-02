@@ -1,14 +1,116 @@
-.config-tab {
-  border: 1px solid black;
-  width: 100%;
-  height: 20vh;
-}
-
 .app {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background: var(--bg);
+}
+
+/* ---- Brand header ---- */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brand-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.brand-sheet {
+  color: var(--text-dim);
+  font-size: 13px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+
+/* ---- Formula / active-cell bar (replaces the old empty band) ---- */
+.formula-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  min-height: 40px;
+}
+
+.cell-address {
+  min-width: 56px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--accent-strong);
+  background: var(--accent-weak);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-content {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-content em {
+  color: var(--text-faint);
+  font-style: normal;
+  font-family: "Inter", sans-serif;
+}
+
+.shortcut-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.shortcut-hint kbd {
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+.hint-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+@media (max-width: 760px) {
+  .shortcut-hint {
+    display: none;
+  }
 }
 
 .sheet-tabs {
@@ -16,8 +118,8 @@
   align-items: flex-end;
   gap: 6px;
   padding: 0 8px;
-  background: #d9dde3;
-  border-top: 1px solid #bcc5d1;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
   flex-shrink: 0;
   min-height: 36px;
 }
@@ -53,10 +155,10 @@
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 1px solid #b8c0cc;
+  border: 1px solid var(--border);
   border-radius: 50%;
-  background: #cfd5df;
-  color: #526071;
+  background: var(--surface-2);
+  color: var(--text-dim);
   cursor: pointer;
   transition:
     background-color 0.16s ease,
@@ -66,16 +168,16 @@
 }
 
 .sheet-add-btn:hover {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--surface-3);
+  color: var(--text);
   transform: translateY(-1px);
 }
 
 .sheet-add-btn.active {
-  background: #2563eb;
-  border-color: #1d4ed8;
+  background: var(--accent);
+  border-color: var(--accent-strong);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 12px var(--accent-weak);
 }
 
 .sheet-add-popover {
@@ -88,10 +190,10 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
+  box-shadow: var(--shadow);
   animation: sheet-add-pop 0.14s ease-out;
 }
 
@@ -102,7 +204,7 @@
   top: 100%;
   right: 14px;
   border: 7px solid transparent;
-  border-top-color: #ffffff;
+  border-top-color: var(--surface-2);
 }
 
 .sheet-add-label {
@@ -117,10 +219,11 @@
   width: 100%;
   box-sizing: border-box;
   padding: 9px 11px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border);
   border-radius: 9px;
   font-size: 0.92rem;
-  color: #0f172a;
+  background: var(--bg);
+  color: var(--text);
   outline: none;
   transition:
     border-color 0.16s ease,
@@ -128,12 +231,12 @@
 }
 
 .sheet-add-input::placeholder {
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 .sheet-add-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-weak);
 }
 
 .sheet-add-actions {
@@ -156,28 +259,29 @@
 }
 
 .sheet-add-cancel {
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
 }
 
 .sheet-add-cancel:hover {
-  background: #f1f5f9;
+  background: var(--surface-3);
 }
 
 .sheet-add-create {
   border: none;
-  background: #2563eb;
+  background: var(--accent);
   color: #ffffff;
 }
 
 .sheet-add-create:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--accent-strong);
   transform: translateY(-1px);
 }
 
 .sheet-add-create:disabled {
-  background: #94a3b8;
+  background: var(--surface-3);
+  color: var(--text-faint);
   cursor: not-allowed;
 }
 
@@ -197,11 +301,11 @@
   align-items: center;
   gap: 1px;
   padding-right: 5px;
-  border: 1px solid #b8c0cc;
+  border: 1px solid var(--border);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
-  background: #cfd5df;
-  color: #526071;
+  background: var(--surface-2);
+  color: var(--text-dim);
   white-space: nowrap;
   line-height: 1;
   transition:
@@ -210,14 +314,14 @@
 }
 
 .sheet-tab:hover {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--surface-3);
+  color: var(--text);
 }
 
 .sheet-tab.active {
-  background: #ffffff;
-  color: #0f172a;
-  box-shadow: inset 0 1px 0 #ffffff;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: inset 0 2px 0 var(--accent);
   margin-bottom: -1px;
 }
 
@@ -271,47 +375,99 @@
 .home-page {
   max-width: 1140px;
   margin: 0 auto;
-  padding: 32px 24px;
-  color: #0f172a;
+  padding: 40px 24px 56px;
+  color: var(--text);
+  min-height: 100vh;
 }
 
 .home-hero {
-  border-radius: 28px;
-  padding: 40px 32px;
-  background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
-  margin-bottom: 32px;
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+  border-radius: 24px;
+  padding: 44px 40px;
+  background:
+    radial-gradient(1200px 340px at 0% -10%, var(--accent-weak), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 40px;
+  box-shadow: var(--shadow);
 }
 
 .hero-copy {
-  max-width: 720px;
+  max-width: 760px;
 }
 
 .eyebrow {
   margin: 0 0 14px;
-  color: #2563eb;
-  font-size: 0.8rem;
-  letter-spacing: 0.16em;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;
 }
 
+.eyebrow::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  margin-right: 9px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+
 .hero-copy h1 {
   margin: 0;
-  font-size: clamp(2.5rem, 3vw, 3.75rem);
-  line-height: 1.02;
+  font-size: clamp(2.2rem, 3vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
 }
 
 .hero-description {
   margin-top: 18px;
   max-width: 660px;
-  color: #475569;
-  font-size: 1rem;
+  color: var(--text-dim);
+  font-size: 1.02rem;
   line-height: 1.7;
 }
 
+/* Feature chips that tell a first-time visitor what the app can do. */
+.capability-grid {
+  margin-top: 32px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.capability-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.capability-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.capability-card strong {
+  display: block;
+  font-size: 0.98rem;
+  margin-bottom: 6px;
+}
+
+.capability-card span {
+  color: var(--text-dim);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
 .workbooks-section {
-  margin-top: 24px;
+  margin-top: 8px;
 }
 
 .section-header {
@@ -324,15 +480,15 @@
 
 .section-header h2 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
 }
 
 .primary-button {
   border: none;
   border-radius: 9999px;
-  padding: 12px 22px;
-  background: #2563eb;
-  color: white;
+  padding: 11px 20px;
+  background: var(--accent);
+  color: #ffffff;
   cursor: pointer;
   font-weight: 700;
   transition:
@@ -341,26 +497,25 @@
 }
 
 .primary-button:hover {
-  background: #1d4ed8;
+  background: var(--accent-strong);
   transform: translateY(-1px);
 }
 
 .workbook-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 18px;
+  gap: 16px;
 }
 
 .workbook-card {
-  background: white;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 22px;
-  padding: 24px;
-  min-height: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.05);
   transition:
     transform 0.18s ease,
     border-color 0.18s ease;
@@ -368,7 +523,7 @@
 
 .workbook-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(37, 99, 235, 0.35);
+  border-color: var(--accent);
 }
 
 .workbook-card strong {
@@ -379,37 +534,49 @@
 
 .workbook-card p {
   margin: 0;
-  color: #64748b;
+  color: var(--text-dim);
   line-height: 1.6;
 }
 
 .workbook-card-cta {
   display: inline-flex;
   align-items: center;
-  color: #2563eb;
-  font-weight: 700;
+  align-self: flex-start;
   margin-top: 20px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: var(--accent-weak);
+  color: var(--accent-strong);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.16s ease;
+}
+
+.workbook-card-cta:hover {
+  background: var(--accent);
+  color: #ffffff;
 }
 
 .empty-state {
-  border: 2px dashed #e2e8f0;
-  border-radius: 22px;
+  border: 2px dashed var(--border);
+  border-radius: 18px;
   padding: 56px 32px;
   text-align: center;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--surface);
+  color: var(--text-dim);
 }
 
 .empty-icon {
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
   margin: 0 auto 18px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #eff6ff;
-  color: #2563eb;
-  font-size: 2.2rem;
+  background: var(--accent-weak);
+  color: var(--accent-strong);
+  font-size: 2rem;
   font-weight: 700;
 }
 
@@ -431,9 +598,10 @@
   width: 380px;
   max-width: 100%;
   padding: 26px 24px 22px;
-  background: #ffffff;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  box-shadow: var(--shadow);
   text-align: center;
   animation: modal-pop 0.16s ease-out;
 }
@@ -445,19 +613,19 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #fee2e2;
-  color: #dc2626;
+  background: rgba(220, 38, 38, 0.16);
+  color: #f87171;
 }
 
 .modal-card h3 {
   margin: 0 0 8px;
   font-size: 1.2rem;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .modal-card p {
   margin: 0 0 22px;
-  color: #475569;
+  color: var(--text-dim);
   font-size: 0.95rem;
   line-height: 1.6;
 }
@@ -481,13 +649,13 @@
 }
 
 .modal-cancel {
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
 }
 
 .modal-cancel:hover {
-  background: #f1f5f9;
+  background: var(--surface-3);
 }
 
 .modal-delete {

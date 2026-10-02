@@ -2,15 +2,33 @@ import { Plus, Trash2, X } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { DATASOURCE_TYPE, DEFAULT_CLIENT_DB_SERVICE_TYPE } from "../constents";
+import {
+  APP_NAME,
+  DATASOURCE_TYPE,
+  DEFAULT_CLIENT_DB_SERVICE_TYPE,
+} from "../constents";
 import { UserContext } from "../context";
 import { clientDbSource } from "../factories/registory/clientDb";
 import { dataSource } from "../factories/registory/dataSource";
+import { numberToAlphabet } from "../util/sheet";
 import Sheet from "./sheet";
 
 export default function Book() {
-  const { activeSheetName, setActiveSheetName, setActiveBookIndx } =
-    useContext(UserContext)!;
+  const {
+    activeSheetName,
+    setActiveSheetName,
+    setActiveBookIndx,
+    selectedCell,
+    sheetData,
+  } = useContext(UserContext)!;
+
+  // Formula-bar readout: the active cell's A1 address and its raw text (the
+  // formula if it has one, otherwise the plain value).
+  const [selRow, selCol] = selectedCell?.split("-") ?? [];
+  const cellAddress =
+    selRow && selCol ? `${numberToAlphabet(Number(selCol), "")}${selRow}` : "—";
+  const activeGrid = selectedCell ? sheetData.cellData[selectedCell] : undefined;
+  const cellContent = activeGrid?.rawData ?? activeGrid?.content ?? "";
 
   const { bookId } = useParams();
   const [sheetNames, setSheetNames] =
@@ -104,9 +122,35 @@ export default function Book() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Excel Clone</h1>
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true" />
+          <span className="brand-name">{APP_NAME}</span>
+        </div>
+        {activeSheetName && (
+          <span className="brand-sheet">{activeSheetName}</span>
+        )}
       </header>
-      <div className="config-tab"></div>
+
+      <div className="formula-bar">
+        <span className="cell-address" title="Active cell">
+          {cellAddress}
+        </span>
+        <span className="cell-content">
+          {cellContent ? (
+            cellContent
+          ) : (
+            <em>Type a value, or start with “=” for a formula</em>
+          )}
+        </span>
+        <span className="shortcut-hint">
+          <kbd>=</kbd> SUM / IF / ranges
+          <span className="hint-dot" />
+          <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>X</kbd>
+          <span className="hint-dot" />
+          <kbd>↑ ↓ ← →</kbd> move
+        </span>
+      </div>
+
       <Sheet />
       <div className="sheet-tabs">
         <div className="sheet-tabs-scroll">

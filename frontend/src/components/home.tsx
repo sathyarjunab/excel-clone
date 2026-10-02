@@ -1,9 +1,30 @@
 import { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { DATASOURCE_TYPE } from '../constents';
+import { APP_NAME, APP_TAGLINE, DATASOURCE_TYPE } from '../constents';
 import { UserContext } from '../context';
 import { dataSource } from '../factories/registory/dataSource';
+
+// Surfaced on the dashboard so the first thing a visitor learns is what the
+// app can actually do — not that it resembles another spreadsheet.
+const CAPABILITIES = [
+  {
+    title: 'Formula engine',
+    detail: 'Type = for SUM, AVERAGE, MIN, MAX, IF, ranges and nested expressions.',
+  },
+  {
+    title: 'Keyboard-first',
+    detail: 'Arrow keys, Tab, Enter and Ctrl+C / Ctrl+X to fly across the grid.',
+  },
+  {
+    title: 'Works offline',
+    detail: 'Edits persist locally in IndexedDB and sync back when you reconnect.',
+  },
+  {
+    title: 'Built for scale',
+    detail: 'A virtualized grid renders millions of cells without breaking a sweat.',
+  },
+];
 
 export default function Home() {
   const { books, setBooks, setActiveBookIndx } = useContext(UserContext)!;
@@ -31,12 +52,22 @@ export default function Home() {
     <main className="home-page">
       <section className="home-hero">
         <div className="hero-copy">
-          <p className="eyebrow">Excel Clone</p>
-          <h1>Create, organize, and open your workbooks.</h1>
+          <p className="eyebrow">{APP_NAME}</p>
+          <h1>{APP_TAGLINE}</h1>
           <p className="hero-description">
-            A clean frontend dashboard for your spreadsheets with fast access to
-            your saved books.
+            Open a workbook and start typing. {APP_NAME} brings a real formula
+            engine, keyboard-driven editing, and an offline-ready grid to the
+            browser.
           </p>
+        </div>
+
+        <div className="capability-grid">
+          {CAPABILITIES.map((cap) => (
+            <div key={cap.title} className="capability-card">
+              <strong>{cap.title}</strong>
+              <span>{cap.detail}</span>
+            </div>
+          ))}
         </div>
       </section>
 

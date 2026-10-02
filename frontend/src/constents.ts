@@ -68,6 +68,10 @@ const controlledKeys = [
 
 const arithmeticTokens = ["+", "-", "/", "*", "(", ")", ","];
 
+// Product identity. Change these two to rebrand the whole app.
+const APP_NAME = "Lattice";
+const APP_TAGLINE = "A fast, keyboard-first spreadsheet.";
+
 const movementWeightage: Record<cellMovementKeysType, number> = {
   ArrowUp: -1,
   ArrowDown: 1,
@@ -91,4 +95,6 @@ export {
   controlledKeys,
   movementWeightage,
   arithmeticTokens,
+  APP_NAME,
+  APP_TAGLINE,
 };
