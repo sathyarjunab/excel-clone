@@ -248,15 +248,22 @@ export default function Sheet() {
       });
       const handler = handlerMap[convertedKey];
 
-      // No handler for this key -> the user is typing into the cell.
+      // No handler for this key -> the user may be typing a value into the cell.
+      // Only a *printable character* starts editing — modifier keys (Shift,
+      // Ctrl, Alt, Meta) and other non-character keys (F-keys, etc.) must not,
+      // otherwise pressing Shift to begin a Shift+Arrow selection would wrongly
+      // open the cell editor and swallow the arrows.
       if (!handler) {
-        setClickedCells((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            makeInputActive: true,
-          };
-        });
+        const isPrintable =
+          keyDown.key.length === 1 &&
+          !keyDown.ctrlKey &&
+          !keyDown.metaKey &&
+          !keyDown.altKey;
+        if (isPrintable) {
+          setClickedCells((prev) =>
+            prev ? { ...prev, makeInputActive: true } : prev,
+          );
+        }
         return;
       }
 

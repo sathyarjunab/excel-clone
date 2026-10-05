@@ -240,9 +240,13 @@ export async function handleCut(
       }
       const textContent = sheetData.cellData[`${row}-${column}`]!.content ?? "";
       rowLines += textContent + "\t";
+      // Clear both the computed value AND the raw input — otherwise the cell's
+      // editor (which shows rawData) would still display the old value/formula
+      // the next time the cell is opened.
       dirtyCells[`${row}-${column}`] = {
         ...sheetData.cellData[`${row}-${column}`]!,
         content: "",
+        rawData: "",
       };
       column++;
     }
