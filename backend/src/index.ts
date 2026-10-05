@@ -10,6 +10,7 @@ import { userInjector } from "./util/user.js";
 import debugRouter from "./routes/debug.js";
 import compression from "compression";
 import { requestLogger } from "./util/requestLogger.js";
+import { logger } from "./logger.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -38,13 +39,30 @@ app.use("/api/user", userRouter);
 app.use("/api/sheets", sheetsRouter);
 app.use("/api/book", bookRouter);
 
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
-  if (err instanceof Error) {
-    res.status(500).json({ error: err.message });
-    return;
-  }
-  res.status(500).json({ error: "Unknown error" });
+// Central error handler. Express 5 auto-forwards rejected async route handlers
+// here, so this logs the failure of any request — with the request context — via
+// winston, so it lands in Render logs (and error.log) as structured JSON.
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const message = err instanceof Error ? err.message : "Unknown error";
+  logger.error("request_error", {
+    method: req.method,
+    url: req.originalUrl,
+    message,
+    stack: err instanceof Error ? err.stack : undefined,
+  });
+  res.status(500).json({ error: message });
+});
+
+// Safety net for anything that escapes Express (background promises, etc.) so no
+// failure goes unlogged.
+process.on("unhandledRejection", (reason) => {
+  logger.error("unhandledRejection", {
+    reason: reason instanceof Error ? reason.stack : String(reason),
+  });
+});
+process.on("uncaughtException", (err) => {
+  logger.error("uncaughtException", { message: err.message, stack: err.stack });
+  process.exit(1);
 });
 
 async function connectDb() {
