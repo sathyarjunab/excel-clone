@@ -9,6 +9,7 @@ import userRouter from "./routes/user.js";
 import { userInjector } from "./util/user.js";
 import debugRouter from "./routes/debug.js";
 import compression from "compression";
+import { requestLogger } from "./util/requestLogger.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -22,6 +23,9 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+
+// Logs every request (method, URL, status, duration) — visible in Render logs.
+app.use(requestLogger);
 
 app.get("/api/health", (_req: Request, res: Response) =>
   res.json({ status: "ok" }),
