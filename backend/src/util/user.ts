@@ -16,10 +16,15 @@ export async function userInjector(
 
   if (!token) {
     const { token: freshToken, user } = await service.createWithToken();
+    // In production the frontend (Vercel) and backend (Render) are on different
+    // sites, so the auth cookie must be cross-site: SameSite=None, which the
+    // browser only accepts together with Secure (HTTPS). Locally everything is on
+    // localhost (same site), where Lax over plain HTTP works.
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("token", freshToken, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: isProd ? "none" : "lax",
+      secure: isProd,
       maxAge: THIRTY_DAYS,
     });
     req.user = user;
